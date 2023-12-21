@@ -1,0 +1,9 @@
+.idea
+.vs
+bin
+MDK
+obj
+parser
+*.csproj
+*.csproj.user
+*.sln
