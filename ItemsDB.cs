@@ -150,34 +150,35 @@ namespace IngameScript
                  // Eat. Drink. Sleep. Repeat! (https://steamcommunity.com/sharedfiles/filedetails/?id=2547246713)
                  items.Add(new Item("Clang Kola", "Кланг-Кола", "MyObjectBuilder_ConsumableItem/ClangCola"));
                  items.Add(new Item("Cosmic Coffee", "Космокофе", "MyObjectBuilder_ConsumableItem/CosmicCoffee"));
-                 items.Add(new Item("Sparkling Water", "Sparkling Water", "MyObjectBuilder_ConsumableItem/SparklingWater", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/SparklingWater", "1"}, {"MyObjectBuilder_BlueprintDefinition/SparklingWaterCan", "1"}}));
                  items.Add(new Item("Inter-Stella Beer", "Inter-Stella Beer", "MyObjectBuilder_ConsumableItem/InterBeer"));
                  items.Add(new Item("Lies Chips", "Lies Chips", "MyObjectBuilder_ConsumableItem/LaysChips"));
                  items.Add(new Item("Single Chips", "Single Chips", "MyObjectBuilder_ConsumableItem/PrlnglesChips"));
                  items.Add(new Item("Emergency Ration", "Emergency Ration", "MyObjectBuilder_ConsumableItem/Emergency_Ration", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Emergency_Ration", "1"}}));
 
                  // Plant and Cook (https://steamcommunity.com/sharedfiles/filedetails/?id=2570427696)
+                 // Plant and Cook (Crowigor's Edition) (https://steamcommunity.com/sharedfiles/filedetails/?id=3243597879)
                  items.Add(new Item("Organic", "Органика", "MyObjectBuilder_Ore/Organic", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/CompostingAlgae", "9"}, {"MyObjectBuilder_BlueprintDefinition/CompostingApple", "4"}, {"MyObjectBuilder_BlueprintDefinition/CompostingCabbage", "6"}, {"MyObjectBuilder_BlueprintDefinition/CompostingH2Algae", "9"}, {"MyObjectBuilder_BlueprintDefinition/CompostingHerbs", "2"}, {"MyObjectBuilder_BlueprintDefinition/CompostingMushrooms", "4"}, {"MyObjectBuilder_BlueprintDefinition/CompostingPumpkin", "8"}, {"MyObjectBuilder_BlueprintDefinition/CompostingSoya", "4"}, {"MyObjectBuilder_BlueprintDefinition/CompostingWheat", "4"}}));
-                 items.Add(new Item("Empty Tin Can", "Empty Tin Can", "MyObjectBuilder_Component/EmptyTinCan", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/EmptyTinCan", "1"}}));
-                 items.Add(new Item("Europa Ice Tea", "Europa Ice Tea", "MyObjectBuilder_ConsumableItem/EuropaTea", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/EuropaTea", "1"}}));
-                 items.Add(new Item("Apple", "Apple", "MyObjectBuilder_ConsumableItem/Apple", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedApples", "20"}}));
-                 items.Add(new Item("Apple Juice", "Apple Juice", "MyObjectBuilder_ConsumableItem/AppleJuice", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/AppleJuice", "1"}}));
-                 items.Add(new Item("Apple Pie", "Apple Pie", "MyObjectBuilder_ConsumableItem/ApplePie", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/ApplePie", "1"}}));
-                 items.Add(new Item("Wheat", "Wheat", "MyObjectBuilder_Ingot/Wheat", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedWheat", "40"}}));
-                 items.Add(new Item("Pumpkin", "Pumpkin", "MyObjectBuilder_Ingot/Pumpkin", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedPumpkin", "10"}}));
-                 items.Add(new Item("Cabbage", "Cabbage", "MyObjectBuilder_Ingot/Cabbage", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedCabbage", "12"}}));
-                 items.Add(new Item("Soya Beans", "Soya Beans", "MyObjectBuilder_Ingot/Soya", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedSoya", "30"}, {"MyObjectBuilder_BlueprintDefinition/Soya", "8"}}));
-                 items.Add(new Item("Herbs", "Herbs", "MyObjectBuilder_Ingot/Herbs", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedHerbs", "20"}, {"MyObjectBuilder_BlueprintDefinition/Herbs", "5"}}));
-                 items.Add(new Item("Bread", "Bread", "MyObjectBuilder_ConsumableItem/Bread", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Bread", "1"}}));
-                 items.Add(new Item("Burger", "Burger", "MyObjectBuilder_ConsumableItem/Burger", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Burger", "1"}}));
-                 items.Add(new Item("Meat", "Meat", "MyObjectBuilder_ConsumableItem/Meat"));
-                 items.Add(new Item("Roast Meat", "Roast Meat", "MyObjectBuilder_ConsumableItem/MeatRoasted", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/MeatRoasted", "1"}}));
-                 items.Add(new Item("Meat Soup", "Meat Soup", "MyObjectBuilder_ConsumableItem/Soup", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Soup", "1"}}));
-                 items.Add(new Item("Mushroom Soup", "Mushroom Soup", "MyObjectBuilder_ConsumableItem/MushroomSoup", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/MushroomSoup", "1"}}));
-                 items.Add(new Item("Tofu Soup", "Tofu Soup", "MyObjectBuilder_ConsumableItem/TofuSoup", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/TofuSoup", "1"}}));
-                 items.Add(new Item("Tofu", "Tofu", "MyObjectBuilder_ConsumableItem/Tofu", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Tofu", "1"}}));
-                 items.Add(new Item("Mushrooms", "Mushrooms", "MyObjectBuilder_ConsumableItem/Mushrooms", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedMushrooms", "20"}}));
-                 items.Add(new Item("Steak with Mushrooms", "Steak with Mushrooms", "MyObjectBuilder_ConsumableItem/ShroomSteak", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/ShroomSteak", "1"}}));
+                 items.Add(new Item("Sparkling Water", "Газированная Вода", "MyObjectBuilder_ConsumableItem/SparklingWater", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/SparklingWater", "1"}, {"MyObjectBuilder_BlueprintDefinition/SparklingWaterCan", "1"}}));
+                 items.Add(new Item("Empty Tin Can", "Пустая Жестяная Банка", "MyObjectBuilder_Component/EmptyTinCan", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/EmptyTinCan", "1"}}));
+                 items.Add(new Item("Europa Ice Tea", "Ледяной чай «Европа»", "MyObjectBuilder_ConsumableItem/EuropaTea", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/EuropaTea", "1"}}));
+                 items.Add(new Item("Apple", "Яблоко", "MyObjectBuilder_ConsumableItem/Apple", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedApples", "20"}}));
+                 items.Add(new Item("Apple Juice", "Яблочный Сок", "MyObjectBuilder_ConsumableItem/AppleJuice", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/AppleJuice", "1"}}));
+                 items.Add(new Item("Apple Pie", "Яблочный Пирог", "MyObjectBuilder_ConsumableItem/ApplePie", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/ApplePie", "1"}}));
+                 items.Add(new Item("Wheat", "Пшеница", "MyObjectBuilder_Ingot/Wheat", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedWheat", "40"}}));
+                 items.Add(new Item("Pumpkin", "Тыква", "MyObjectBuilder_Ingot/Pumpkin", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedPumpkin", "10"}}));
+                 items.Add(new Item("Cabbage", "Капуста", "MyObjectBuilder_Ingot/Cabbage", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedCabbage", "12"}}));
+                 items.Add(new Item("Soya Beans", "Соевые Бобы", "MyObjectBuilder_Ingot/Soya", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedSoya", "30"}, {"MyObjectBuilder_BlueprintDefinition/Soya", "8"}}));
+                 items.Add(new Item("Herbs", "Травы", "MyObjectBuilder_Ingot/Herbs", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedHerbs", "20"}, {"MyObjectBuilder_BlueprintDefinition/Herbs", "5"}}));
+                 items.Add(new Item("Bread", "Хлеб", "MyObjectBuilder_ConsumableItem/Bread", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Bread", "1"}}));
+                 items.Add(new Item("Burger", "Бургер", "MyObjectBuilder_ConsumableItem/Burger", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Burger", "1"}}));
+                 items.Add(new Item("Meat", "Мясо", "MyObjectBuilder_ConsumableItem/Meat"));
+                 items.Add(new Item("Roast Meat", "Жареное Мясо", "MyObjectBuilder_ConsumableItem/MeatRoasted", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/MeatRoasted", "1"}}));
+                 items.Add(new Item("Meat Soup", "Мясной Суп", "MyObjectBuilder_ConsumableItem/Soup", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Soup", "1"}}));
+                 items.Add(new Item("Mushroom Soup", "Грибной Суп", "MyObjectBuilder_ConsumableItem/MushroomSoup", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/MushroomSoup", "1"}}));
+                 items.Add(new Item("Tofu Soup", "Суп Из Тофу", "MyObjectBuilder_ConsumableItem/TofuSoup", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/TofuSoup", "1"}}));
+                 items.Add(new Item("Tofu", "Тофу", "MyObjectBuilder_ConsumableItem/Tofu", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/Tofu", "1"}}));
+                 items.Add(new Item("Mushrooms", "Грибы", "MyObjectBuilder_ConsumableItem/Mushrooms", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/FarmedMushrooms", "20"}}));
+                 items.Add(new Item("Steak with Mushrooms", "Стейк С Грибами", "MyObjectBuilder_ConsumableItem/ShroomSteak", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/ShroomSteak", "1"}}));
 
                  // AiEnabled (https://steamcommunity.com/sharedfiles/filedetails/?id=2596208372)
                  items.Add(new Item("Combat Bot Material", "Combat Bot Material", "MyObjectBuilder_Component/AiEnabled_Comp_CombatBotMaterial", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/AiEnabled_BP_CombatBotMaterial", "1"}}));
@@ -187,6 +188,9 @@ namespace IngameScript
 
                  // Personal Shield Generators (https://steamcommunity.com/sharedfiles/filedetails/?id=1330335279)
                  items.Add(new Item("Personal Shield Generator", "Personal Shield Generator", "MyObjectBuilder_PhysicalObject/EngineerShield", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/PersonalShieldItem", "1"}}));
+
+                 // Defense Shields (https://steamcommunity.com/sharedfiles/filedetails/?id=3154379105)
+                 items.Add(new Item("Field Emitter", "Field Emitter", "MyObjectBuilder_Component/ShieldComponent", new Dictionary<string, string>() {{"MyObjectBuilder_BlueprintDefinition/ShieldComponentBP", "1"}}));
 
                 return items;
             }
