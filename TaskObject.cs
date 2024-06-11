@@ -23,7 +23,7 @@ namespace IngameScript
 {
     partial class Program
     {
-        public class Task
+        public class TaskObject
         {
             public string Name { get; set; }
             public string Status { get; set; }
@@ -35,7 +35,7 @@ namespace IngameScript
             public Action Method { get; set; }
             public DebugHelper Debug { get; set; }
 
-            public Task(string name, Action method, int delay = 0, bool needInitialization = true)
+            public TaskObject(string name, Action method, int delay = 0, bool needInitialization = true)
             {
                 Name = name;
                 Status = "wait";

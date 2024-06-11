@@ -25,19 +25,19 @@ namespace IngameScript
     {
         public class ItemsList
         {
-            Dictionary<string, Item> Storage { get; set; }
+            Dictionary<string, ItemObject> Storage { get; set; }
             Dictionary<string, string> Aliases;
             public BlocksHelper Blocks { get; set; }
             public DebugHelper Debug { get; set; }
 
             public ItemsList()
             {
-                Storage = new Dictionary<string, Item>();
+                Storage = new Dictionary<string, ItemObject>();
                 Aliases = new Dictionary<string, string>();
                 Blocks = null;
                 Debug = new DebugHelper();
 
-                foreach (Item item in ItemsDB.getList())
+                foreach (ItemObject item in ItemsDB.getList())
                 {
                     Storage.Add(item.Selector, item);
                     Aliases[item.Name] = item.Selector;
@@ -54,7 +54,7 @@ namespace IngameScript
                 }
             }
 
-            public Item GetItem(string key, bool calculateAmout = false)
+            public ItemObject GetItem(string key, bool calculateAmout = false)
             {
                 string selector = null;
                 if (Storage.ContainsKey(key))
@@ -71,7 +71,7 @@ namespace IngameScript
                     return null;
                 }
 
-                Item item = Storage[selector];
+                ItemObject item = Storage[selector];
                 if (Blocks != null && (calculateAmout || item.IsNewAmout))
                 {
                     item.CalculateAmout(Blocks);
@@ -114,7 +114,7 @@ namespace IngameScript
                 inventory.GetItems(items);
                 foreach (MyInventoryItem item in items)
                 {
-                    Item find = GetItem(item.Type.ToString());
+                    ItemObject find = GetItem(item.Type.ToString());
                     if (find != null)
                     {
                         find.Transfer(item, inventory);

@@ -24,13 +24,13 @@ namespace IngameScript
 {
     partial class Program
     {
-        public class Config
+        public class ConfigObject
         {
             public string Section { get; set; }
             public Dictionary<string, string> Data { get; set; }
             public DebugHelper Debug { get; set; }
 
-            public Config(string section, Dictionary<string, string> data = null)
+            public ConfigObject(string section, Dictionary<string, string> data = null)
             {
                 Section = section;
                 Data = (data != null) ? data : new Dictionary<string, string>();
@@ -58,7 +58,7 @@ namespace IngameScript
                 return result;
             }
 
-            public static Config Parse(string section, string data)
+            public static ConfigObject Parse(string section, string data)
             {
                 Dictionary<string, string> resultData = new Dictionary<string, string>();
 
@@ -94,14 +94,14 @@ namespace IngameScript
                     }
                 }
 
-                return new Config(section, resultData);
+                return new ConfigObject(section, resultData);
             }
 
-            public static Config Merge(string section, List<Config> configs)
+            public static ConfigObject Merge(string section, List<ConfigObject> configs)
             {
-                Config result = new Config(section);
+                ConfigObject result = new ConfigObject(section);
 
-                foreach (Config config in configs)
+                foreach (ConfigObject config in configs)
                 {
                     foreach (KeyValuePair<string, string> entry in config.Data)
                     {

@@ -39,7 +39,7 @@ namespace IngameScript
         ItemsList Items;
         BlocksHelper Blocks;
         DebugHelper Debug;
-        Config GlobalConfig;
+        ConfigObject GlobalConfig;
 
         public Program()
         {
@@ -139,10 +139,10 @@ namespace IngameScript
                 string configSection = ConfigsSections["Inventory Manager"];
                 if (block.CustomData.Contains(configSection))
                 {
-                    Config config = Config.Parse(configSection, block.CustomData);
+                    ConfigObject config = ConfigObject.Parse(configSection, block.CustomData);
                     foreach (KeyValuePair<string, string> entry in config.Data)
                     {
-                        Item item = Items.GetItem(entry.Key);
+                        ItemObject item = Items.GetItem(entry.Key);
                         if (item != null)
                         {
                             item.Inventories.Add(block.GetInventory(0));
@@ -156,10 +156,10 @@ namespace IngameScript
                 string configSection = ConfigsSections["Inventory Manager"];
                 if (block.CustomData.Contains(configSection))
                 {
-                    Config config = Config.Parse(configSection, block.CustomData);
+                    ConfigObject config = ConfigObject.Parse(configSection, block.CustomData);
                     foreach (KeyValuePair<string, string> entry in config.Data)
                     {
-                        Item item = Items.GetItem(entry.Key);
+                        ItemObject item = Items.GetItem(entry.Key);
                         if (item != null)
                         {
                             item.Inventories.Add(block.GetInventory(0));
@@ -218,7 +218,7 @@ namespace IngameScript
                     inventory.GetItems(items);
                     foreach (MyInventoryItem item in items)
                     {
-                        Item find = Items.GetItem(item.Type.ToString());
+                        ItemObject find = Items.GetItem(item.Type.ToString());
                         if (find != null && find.Selector != "Ore/Ice")
                         {
                             find.Transfer(item, inventory);
@@ -264,10 +264,10 @@ namespace IngameScript
                 {
                     continue;
                 }
-                Config config = Config.Parse(ConfigsSections["Items Assembling"], assembler.CustomData);
+                ConfigObject config = ConfigObject.Parse(ConfigsSections["Items Assembling"], assembler.CustomData);
                 foreach (KeyValuePair<string, string> entry in config.Data)
                 {
-                    Item item = Items.GetItem(entry.Key, true);
+                    ItemObject item = Items.GetItem(entry.Key, true);
                     if (item != null && item.Blueprints.Count > 0)
                     {
                         foreach (KeyValuePair<MyDefinitionId, MyFixedPoint> blueprint in item.Blueprints)
@@ -307,10 +307,10 @@ namespace IngameScript
                     continue;
                 }
 
-                Config config = Config.Parse(ConfigsSections["Items Disassembling"], assembler.CustomData);
+                ConfigObject config = ConfigObject.Parse(ConfigsSections["Items Disassembling"], assembler.CustomData);
                 foreach (KeyValuePair<string, string> entry in config.Data)
                 {
-                    Item item = Items.GetItem(entry.Key, true);
+                    ItemObject item = Items.GetItem(entry.Key, true);
                     if (item != null && item.Blueprints.Count > 0)
                     {
                         foreach (KeyValuePair<MyDefinitionId, MyFixedPoint> blueprint in item.Blueprints)
@@ -350,7 +350,7 @@ namespace IngameScript
                     assembler.GetQueue(queue);
                     foreach (MyProductionItem queueItem in queue)
                     {
-                        Item item = Items.GetItem(queueItem.BlueprintId.ToString());
+                        ItemObject item = Items.GetItem(queueItem.BlueprintId.ToString());
                         if (item != null && item.Blueprints.Count > 0)
                         {
                             foreach (KeyValuePair<MyDefinitionId, MyFixedPoint> blueprint in item.Blueprints)
@@ -374,7 +374,7 @@ namespace IngameScript
             // Stop Drones
             foreach (IMyShipConnector connector in Blocks.GetBlocks("Stop Drones"))
             {
-                Config config = Config.Parse(ConfigsSections["Stop Drones"], connector.CustomData);
+                ConfigObject config = ConfigObject.Parse(ConfigsSections["Stop Drones"], connector.CustomData);
 
                 string dronBlocksName = config.Get("DronBlocksName");
                 string baseContainersName = config.Get("BaseContainersName");
@@ -473,14 +473,14 @@ namespace IngameScript
         private void CheckGlobalConfig()
         {
             string section = ConfigsSections["Global Config"];
-            Config configDefault = new Config(section, new Dictionary<string, string>()
+            ConfigObject configDefault = new ConfigObject(section, new Dictionary<string, string>()
             {
                 {"Tag", "[Base]" },
                 {"Ignore", "[!CBM]" },
                 {"SD:BaseContainersMaxVolume", "90%" },
             });
-            Config configCurrent = Config.Parse(section, Me.CustomData);
-            Config configNew = Config.Merge(section, new List<Config> { configDefault, configCurrent });
+            ConfigObject configCurrent = ConfigObject.Parse(section, Me.CustomData);
+            ConfigObject configNew = ConfigObject.Merge(section, new List<ConfigObject> { configDefault, configCurrent });
 
             List<string> customData = new List<string>()
             {

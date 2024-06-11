@@ -25,18 +25,18 @@ namespace IngameScript
     {
         public class TasksList
         {
-            Dictionary<string, Task> Storage { get; set; }
+            Dictionary<string, TaskObject> Storage { get; set; }
             public DebugHelper Debug { get; set; }
 
             public TasksList()
             {
-                Storage = new Dictionary<string, Task>();
+                Storage = new Dictionary<string, TaskObject>();
                 Debug = new DebugHelper();
             }
 
             public void CreateTask(string name, Action method, int delay = 0, bool needInitialization = true)
             {
-                Task task = new Task(name, method, delay, needInitialization);
+                TaskObject task = new TaskObject(name, method, delay, needInitialization);
                 Storage[task.Name] = task;
             }
 
@@ -45,7 +45,7 @@ namespace IngameScript
                 bool initializationSuccess = CheckInitialization();
                 foreach (string key in new List<string>(Storage.Keys))
                 {
-                    Task task = Storage[key];
+                    TaskObject task = Storage[key];
 
                     UpdateStorageItem(task);
 
@@ -116,9 +116,9 @@ namespace IngameScript
             public List<string> GetStatus()
             {
                 List<string> status = new List<string>();
-                foreach (KeyValuePair<string, Task> entry in Storage)
+                foreach (KeyValuePair<string, TaskObject> entry in Storage)
                 {
-                    Task task = entry.Value;
+                    TaskObject task = entry.Value;
 
                     string text = task.Name + ": ";
 
@@ -147,7 +147,7 @@ namespace IngameScript
                 }
 
                 bool result = false;
-                Task task = Storage["Initialization"];
+                TaskObject task = Storage["Initialization"];
                 if (task.Status == "success")
                 {
                     result = true;
@@ -160,7 +160,7 @@ namespace IngameScript
                 return result;
             }
 
-            private void UpdateStorageItem(Task task)
+            private void UpdateStorageItem(TaskObject task)
             {
                 Storage[task.Name] = task;
             }

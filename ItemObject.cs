@@ -24,7 +24,7 @@ namespace IngameScript
 {
     partial class Program
     {
-        public class Item
+        public class ItemObject
         {
             public string Selector { get; set; }
             public string Name { get; set; }
@@ -36,7 +36,7 @@ namespace IngameScript
             public bool IsNewAmout { get; set; }
             public DebugHelper Debug { get; set; }
 
-            public Item(string name, string localization, string type, Dictionary<string, string> blueprints = null)
+            public ItemObject(string name, string localization, string type, Dictionary<string, string> blueprints = null)
             {
                 Selector = type.Replace("MyObjectBuilder_", ""); ;
                 Name = name;
