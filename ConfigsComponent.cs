@@ -1,24 +1,5 @@
-﻿using Sandbox.Engine.Utils;
-using Sandbox.Game.EntityComponents;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using SpaceEngineers.Game.ModAPI.Ingame;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using VRage;
-using VRage.Collections;
-using VRage.Game;
-using VRage.Game.Components;
-using VRage.Game.GUI.TextPanel;
-using VRage.Game.ModAPI.Ingame;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Game.ObjectBuilders.Definitions;
-using VRageMath;
-using static IngameScript.Program;
 
 namespace IngameScript
 {
@@ -28,13 +9,11 @@ namespace IngameScript
         {
             public string Section { get; set; }
             public Dictionary<string, string> Data { get; set; }
-            public DebugHelper Debug { get; set; }
 
             public ConfigObject(string section, Dictionary<string, string> data = null)
             {
                 Section = section;
                 Data = (data != null) ? data : new Dictionary<string, string>();
-                Debug = new DebugHelper();
             }
 
             public string Get(string key, string defaultValue = null)
@@ -52,22 +31,35 @@ namespace IngameScript
                 List<string> result = new List<string>();
                 foreach (KeyValuePair<string, string> entry in Data)
                 {
-                    result.Add(entry.Key + "=" + entry.Value);
+                    string line = entry.Key;
+                    if (line.StartsWith("EMPTY_LINE_"))
+                    {
+                        line = " ";
+                        result.Add(line);
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(entry.Value))
+                    {
+                        line += "=" + entry.Value;
+                    }
+                    result.Add(line);
                 }
 
                 return result;
             }
 
-            public static ConfigObject Parse(string section, string data)
+            public static ConfigObject Parse(string section, string data, bool emptyLines = false)
             {
                 Dictionary<string, string> resultData = new Dictionary<string, string>();
 
                 string currentSection = "";
                 string[] lines = data.Split('\n');
+                int emptyLineCounter = 0;
                 foreach (string line in lines)
                 {
                     string content = line.Trim();
-                    if (content.Length == 0)
+                    if (content.Length == 0 && !emptyLines)
                     {
                         continue;
                     }
@@ -84,13 +76,19 @@ namespace IngameScript
                     {
                         string[] lineParts = content.Split(new[] { '=' }, 2);
                         string key = lineParts[0].Trim();
+                        if (emptyLines && String.IsNullOrEmpty(key))
+                        {
+                            key = "EMPTY_LINE_" + emptyLineCounter;
+                            emptyLineCounter++;
+                        }
+
                         string value = null;
                         if (lineParts.Length == 2)
                         {
                             value = lineParts[1].Trim();
                         }
 
-                        resultData.Add(key, value);
+                        resultData[key] = value;
                     }
                 }
 

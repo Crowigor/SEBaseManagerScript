@@ -1,28 +1,13 @@
-﻿using Sandbox.Game.EntityComponents;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using SpaceEngineers.Game.ModAPI.Ingame;
-using System;
-using System.Collections;
+﻿using Sandbox.ModAPI.Ingame;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
 using VRage;
-using VRage.Collections;
-using VRage.Game;
-using VRage.Game.Components;
-using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Game.ObjectBuilders.Definitions;
-using VRageMath;
 
 namespace IngameScript
 {
     partial class Program
     {
-        public class TransferHelper
+        public class InventoryHelper
         {
             public static MyFixedPoint TransferToInventories(MyInventoryItem inventoryItem, IMyInventory sourceInventory, List<IMyInventory> destanationInventories, MyFixedPoint amount = new MyFixedPoint())
             {
@@ -33,17 +18,12 @@ namespace IngameScript
                 {
                     if (destinationInventory == sourceInventory)
                     {
-
                         if (amount == zero)
-                        {
                             return zero;
-                        }
 
                         MyFixedPoint exist = destinationInventory.GetItemAmount(inventoryItem.Type);
                         if (amount <= exist)
-                        {
                             return zero;
-                        }
 
                         result -= exist;
 
@@ -54,9 +34,7 @@ namespace IngameScript
                     if (transfer != null)
                     {
                         if (transfer == zero)
-                        {
                             return zero;
-                        }
 
                         result = (MyFixedPoint)transfer;
                     }
@@ -74,7 +52,6 @@ namespace IngameScript
                     bool transfer = (amount == zero || before <= amount) ? sourceInventory.TransferItemTo(destinationInventory, item) : sourceInventory.TransferItemTo(destinationInventory, item, amount);
                     if (transfer)
                     {
-
                         MyFixedPoint after = GetItemAmout(item, sourceInventory);
                         if (amount == zero || amount == before)
                         {
@@ -106,16 +83,13 @@ namespace IngameScript
             {
                 MyFixedPoint zero = new MyFixedPoint();
                 if (amount == zero || blocks.Count == 0)
-                {
                     return null;
-                }
 
                 MyFixedPoint current = destanationInventory.GetItemAmount(type);
                 amount -= current;
+
                 if (amount <= zero)
-                {
                     return amount;
-                }
 
                 foreach (IMyTerminalBlock block in blocks)
                 {
@@ -134,16 +108,12 @@ namespace IngameScript
                                 {
                                     if (inventoryItem != null)
                                     {
-                                        MyFixedPoint? transfer = TransferHelper.TransferItem((MyInventoryItem)inventoryItem, (IMyInventory)sourceInventory, destanationInventory, amount);
+                                        MyFixedPoint? transfer = InventoryHelper.TransferItem((MyInventoryItem)inventoryItem, (IMyInventory)sourceInventory, destanationInventory, amount);
                                         if (transfer != null)
-                                        {
                                             amount = (MyFixedPoint)transfer;
 
-                                        }
                                         if (amount <= zero)
-                                        {
                                             return amount;
-                                        }
                                     }
                                 }
                             }
