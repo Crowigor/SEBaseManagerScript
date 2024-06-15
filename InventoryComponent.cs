@@ -1,5 +1,6 @@
 ﻿using Sandbox.ModAPI.Ingame;
 using System.Collections.Generic;
+using System.Linq;
 using VRage;
 using VRage.Game.ModAPI.Ingame;
 
@@ -9,117 +10,115 @@ namespace IngameScript
     {
         public class InventoryHelper
         {
-            public static MyFixedPoint TransferToInventories(MyInventoryItem inventoryItem, IMyInventory sourceInventory, List<IMyInventory> destanationInventories, MyFixedPoint amount = new MyFixedPoint())
+            public static MyFixedPoint TransferToInventories(MyInventoryItem inventoryItem,
+                IMyInventory sourceInventory, List<IMyInventory> destinationInventories,
+                MyFixedPoint amount = new MyFixedPoint())
             {
-                MyFixedPoint zero = MyFixedPoint.Zero;
-                MyFixedPoint result = inventoryItem.Amount;
+                var zero = MyFixedPoint.Zero;
+                var result = inventoryItem.Amount;
 
-                foreach (IMyInventory destinationInventory in destanationInventories)
+                foreach (var destinationInventory in destinationInventories)
                 {
                     if (destinationInventory == sourceInventory)
                     {
                         if (amount == zero)
                             return zero;
 
-                        MyFixedPoint exist = destinationInventory.GetItemAmount(inventoryItem.Type);
+                        var exist = destinationInventory.GetItemAmount(inventoryItem.Type);
                         if (amount <= exist)
                             return zero;
 
                         result -= exist;
-
                         continue;
                     }
 
-                    MyFixedPoint? transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
-                    if (transfer != null)
-                    {
-                        if (transfer == zero)
-                            return zero;
+                    var transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
+                    if (transfer == null)
+                        continue;
 
-                        result = (MyFixedPoint)transfer;
-                    }
+                    if (transfer == zero)
+                        return zero;
+
+                    result = (MyFixedPoint)transfer;
                 }
 
                 return result;
             }
 
-            public static MyFixedPoint? TransferItem(MyInventoryItem item, IMyInventory sourceInventory, IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
+            public static MyFixedPoint? TransferItem(MyInventoryItem item, IMyInventory sourceInventory,
+                IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
             {
-                MyFixedPoint before = GetItemAmout(item, sourceInventory);
-                MyFixedPoint zero = MyFixedPoint.Zero;
-                if (sourceInventory.CanTransferItemTo(destinationInventory, item.Type) && !destinationInventory.IsFull)
-                {
-                    bool transfer = (amount == zero || before <= amount) ? sourceInventory.TransferItemTo(destinationInventory, item) : sourceInventory.TransferItemTo(destinationInventory, item, amount);
-                    if (transfer)
-                    {
-                        MyFixedPoint after = GetItemAmout(item, sourceInventory);
-                        if (amount == zero || amount == before)
-                        {
-                            return after;
-                        }
+                var before = GetItemAmount(item, sourceInventory);
+                var zero = MyFixedPoint.Zero;
 
-                        if (amount > before)
-                        {
-                            return after + (amount - before);
-                        }
+                if (!sourceInventory.CanTransferItemTo(destinationInventory, item.Type) ||
+                    destinationInventory.IsFull)
+                    return null;
 
-                        MyFixedPoint result = (after > 0) ? before - after : before;
+                var transfer = (amount == zero || before <= amount)
+                    ? sourceInventory.TransferItemTo(destinationInventory, item)
+                    : sourceInventory.TransferItemTo(destinationInventory, item, amount);
+                if (!transfer)
+                    return null;
 
-                        return amount - result;
-                    }
-                }
+                var after = GetItemAmount(item, sourceInventory);
+                if (amount == zero || amount == before)
+                    return after;
 
-                return null;
+                if (amount > before)
+                    return after + (amount - before);
+
+                var result = (after > 0) ? before - after : before;
+                return amount - result;
             }
 
-            public static MyFixedPoint GetItemAmout(MyInventoryItem item, IMyInventory inventory)
+            public static MyFixedPoint GetItemAmount(MyInventoryItem item, IMyInventory inventory)
             {
                 var findItem = inventory.GetItemByID(item.ItemId);
 
-                return (findItem.HasValue) ? findItem.Value.Amount : MyFixedPoint.Zero;
+                return findItem?.Amount ?? MyFixedPoint.Zero;
             }
 
-            public static MyFixedPoint? TransferFromBlocks(MyItemType type, List<IMyTerminalBlock> blocks, IMyInventory destanationInventory, MyFixedPoint amount = new MyFixedPoint())
+            public static MyFixedPoint? TransferFromBlocks(MyItemType type, List<IMyTerminalBlock> blocks,
+                IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
             {
-                MyFixedPoint zero = new MyFixedPoint();
+                var zero = new MyFixedPoint();
                 if (amount == zero || blocks.Count == 0)
                     return null;
 
-                MyFixedPoint current = destanationInventory.GetItemAmount(type);
+                var current = destinationInventory.GetItemAmount(type);
                 amount -= current;
 
                 if (amount <= zero)
                     return amount;
 
-                foreach (IMyTerminalBlock block in blocks)
+                foreach (var block in blocks)
                 {
-                    if (block is IMyEntity)
+                    if (block == null)
+                        continue;
+
+                    var inventoryCounts = block.InventoryCount;
+                    if (inventoryCounts <= 0)
+                        continue;
+
+                    for (var i = 0; i < inventoryCounts; i++)
                     {
-                        int invertoryCounts = block.InventoryCount;
-                        if (invertoryCounts > 0)
+                        var sourceInventory = block.GetInventory(i);
+                        var sourceInventoryItems = new List<MyInventoryItem>();
+                        sourceInventory.GetItems(sourceInventoryItems, b => b.Type == type);
+
+                        foreach (var transfer in sourceInventoryItems.Select(inventoryItem =>
+                                     TransferItem(inventoryItem, sourceInventory, destinationInventory, amount)))
                         {
-                            for (int i = 0; i < invertoryCounts; i++)
-                            {
-                                IMyInventory sourceInventory = block.GetInventory(i);
-                                List<MyInventoryItem> sourceInvertoryItems = new List<MyInventoryItem>();
-                                sourceInventory.GetItems(sourceInvertoryItems, b => b.Type == type);
+                            if (transfer != null)
+                                amount = (MyFixedPoint)transfer;
 
-                                foreach (MyInventoryItem? inventoryItem in sourceInvertoryItems)
-                                {
-                                    if (inventoryItem != null)
-                                    {
-                                        MyFixedPoint? transfer = InventoryHelper.TransferItem((MyInventoryItem)inventoryItem, (IMyInventory)sourceInventory, destanationInventory, amount);
-                                        if (transfer != null)
-                                            amount = (MyFixedPoint)transfer;
-
-                                        if (amount <= zero)
-                                            return amount;
-                                    }
-                                }
-                            }
+                            if (amount <= zero)
+                                return amount;
                         }
                     }
                 }
+
                 return amount;
             }
         }

@@ -24,6 +24,7 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         #region Fields and Properties
+
         public static class ConfigsSections
         {
             public const string GlobalConfig = "CBM:GC";
@@ -33,23 +34,24 @@ namespace IngameScript
             public const string ItemsDisassembling = "CBM:ID";
         }
 
-        TasksManager Tasks;
-        BlocksManager Blocks;
-        ItemsManager Items;
-        ConfigObject GlobalConfig;
+        private readonly TasksManager _tasks;
+        private BlocksManager _blocks;
+        private ItemsManager _items;
+        private ConfigObject _globalConfig;
 
         #endregion;
 
         #region Ingame methods
+
         public Program()
         {
             // Add Tasks
-            Tasks = new TasksManager();
-            Tasks.Add(TasksManager.InitializationTaskName, TaskInitialization, 20, false);
-            Tasks.Add(TasksManager.CalculationTaskName, TaskCalculation, 3);
-            Tasks.Add("Inventory Manager", TaskInventoryManager, 10);
-            Tasks.Add("Assemblers Manager", TaskAssemblersManager, 5, true, true);
-            Tasks.Add("Display Status", TaskDisplayStatus, 1, false);
+            _tasks = new TasksManager();
+            _tasks.Add(TasksManager.InitializationTaskName, TaskInitialization, 20, false);
+            _tasks.Add(TasksManager.CalculationTaskName, TaskCalculation, 3);
+            _tasks.Add("Inventory Manager", TaskInventoryManager, 10);
+            _tasks.Add("Assemblers Manager", TaskAssemblersManager, 5, true, true);
+            _tasks.Add("Display Status", TaskDisplayStatus, 1, false);
 
             // Run Initialization
             TaskInitialization();
@@ -60,331 +62,304 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            if (argument == null || argument == "")
-                Tasks.Run();
-
+            if (string.IsNullOrEmpty(argument))
+                _tasks.Run();
         }
 
         #endregion
 
         #region Tasks
+
         private void TaskInitialization()
         {
             ConfigureMeDisplay();
             CheckGlobalConfig();
-            Blocks = new BlocksManager(GridTerminalSystem, GlobalConfig.Get("Tag"), GlobalConfig.Get("Ignore"));
+            _blocks = new BlocksManager(GridTerminalSystem, _globalConfig.Get("Tag"), _globalConfig.Get("Ignore"));
 
-            if (Items == null)
-                Items = new ItemsManager();
+            if (_items == null)
+                _items = new ItemsManager();
             else
-                Items.ClearInventories();
+                _items.ClearInventories();
 
-            // Add invetories to items
-            foreach (IMyTerminalBlock block in Blocks.GetBlocks(BlocksManager.BlockType.GasTanks))
+            // Add inventories to items
+            foreach (var block in _blocks.GetBlocks(BlocksManager.BlockType.GasTanks))
             {
-                string configSection = ConfigsSections.InventoryManager;
-                if (block.CustomData.Contains(configSection))
+                const string configSection = ConfigsSections.InventoryManager;
+                if (!block.CustomData.Contains(configSection))
+                    continue;
+
+                var config = ConfigObject.Parse(configSection, block.CustomData);
+                foreach (var item in config.Data.Select(entry => _items.GetItem(entry.Key)).Where(item => item != null))
                 {
-                    ConfigObject config = ConfigObject.Parse(configSection, block.CustomData);
-                    foreach (KeyValuePair<string, string> entry in config.Data)
-                    {
-                        ItemObject item = Items.GetItem(entry.Key);
-                        if (item != null)
-                        {
-                            item.Inventories.Add(block.GetInventory(0));
-                        }
-                    }
+                    item.Inventories.Add(block.GetInventory(0));
                 }
             }
-            foreach (IMyTerminalBlock block in Blocks.GetBlocks(BlocksManager.BlockType.Containers))
+
+            foreach (var block in _blocks.GetBlocks(BlocksManager.BlockType.Containers))
             {
-                string configSection = ConfigsSections.InventoryManager;
-                if (block.CustomData.Contains(configSection))
+                const string configSection = ConfigsSections.InventoryManager;
+                if (!block.CustomData.Contains(configSection))
+                    continue;
+
+                var config = ConfigObject.Parse(configSection, block.CustomData);
+                foreach (var item in config.Data.Select(entry => _items.GetItem(entry.Key)).Where(item => item != null))
                 {
-                    ConfigObject config = ConfigObject.Parse(configSection, block.CustomData);
-                    foreach (KeyValuePair<string, string> entry in config.Data)
-                    {
-                        ItemObject item = Items.GetItem(entry.Key);
-                        if (item != null)
-                        {
-                            item.Inventories.Add(block.GetInventory(0));
-                        }
-                    }
+                    item.Inventories.Add(block.GetInventory(0));
                 }
             }
         }
 
         private void TaskCalculation()
         {
-            // Calcualte Itmes Amounts
-            Items.ClearAmounts();
-            foreach (IMyTerminalBlock block in Blocks.GetBlocks())
+            // Calculate Items Amounts
+            _items.ClearAmounts();
+            foreach (var block in _blocks.GetBlocks().Where(block => block.IsFunctional))
             {
-                if (!block.IsFunctional)
-                {
-                    continue;
-                }
                 if (block.InventoryCount > 0)
                 {
-                    for (int i = 0; i < block.InventoryCount; i++)
+                    for (var i = 0; i < block.InventoryCount; i++)
                     {
-                        IMyInventory inventory = block.GetInventory(i);
+                        var inventory = block.GetInventory(i);
                         if (inventory == null)
                             continue;
 
-                        List<MyInventoryItem> items = new List<MyInventoryItem>();
+                        var items = new List<MyInventoryItem>();
                         inventory.GetItems(items);
-                        if (items.Count > 0)
+                        if (items.Count <= 0)
+                            continue;
+
+                        foreach (var item in items)
                         {
-                            foreach (MyInventoryItem item in items)
-                            {
-                                ItemObject find = Items.GetItem(item.Type.ToString());
-                                if (find != null)
-                                {
-                                    find.Amounts.Exist += item.Amount;
-                                    Items.UpdateItem(find);
-                                }
-                            }
+                            var find = _items.GetItem(item.Type.ToString());
+                            if (find == null)
+                                continue;
+
+                            find.Amounts.Exist += item.Amount;
+                            _items.UpdateItem(find);
                         }
                     }
                 }
 
-                if (block is IMyAssembler)
+                var assembler = block as IMyAssembler;
+                if (assembler == null) continue;
                 {
-                    IMyAssembler assembler = (IMyAssembler)block;
+                    if (!assembler.IsWorking)
+                        continue;
 
-                    if (assembler.IsWorking)
+                    // Calculate  assembler queue
+                    if (!assembler.IsQueueEmpty)
                     {
-
-                        if (!assembler.IsQueueEmpty)
+                        var queue = new List<MyProductionItem>();
+                        assembler.GetQueue(queue);
+                        foreach (var item in queue)
                         {
-                            List<MyProductionItem> queue = new List<MyProductionItem>();
-                            assembler.GetQueue(queue);
-                            foreach (MyProductionItem item in queue)
+                            var find = _items.GetItem(item.BlueprintId.ToString());
+                            if (find == null)
+                                continue;
+
+                            var amount = item.Amount * find.Blueprints[item.BlueprintId];
+                            if (assembler.Mode == MyAssemblerMode.Assembly)
+                                find.Amounts.Assembling += amount;
+                            else if (assembler.Mode == MyAssemblerMode.Disassembly)
+                                find.Amounts.Disassembling += amount;
+                        }
+                    }
+
+                    // Calculate assembler quota
+                    if (assembler.CooperativeMode) continue;
+                    {
+                        if (assembler.Mode == MyAssemblerMode.Assembly &&
+                            assembler.CustomData.Contains(ConfigsSections.ItemsAssembling))
+                        {
+                            var config = ConfigObject.Parse(ConfigsSections.ItemsAssembling, assembler.CustomData);
+                            if (config == null)
+                                continue;
+
+                            foreach (var entry in config.Data)
                             {
-                                ItemObject find = Items.GetItem(item.BlueprintId.ToString());
-                                if (find != null)
+                                var find = _items.GetItem(entry.Key);
+                                if (find == null) continue;
+                                if (find.Amounts.AssemblingQuota < 0)
                                 {
-                                    MyFixedPoint amount = item.Amount * find.Blueprints[item.BlueprintId];
-                                    if (assembler.Mode == MyAssemblerMode.Assembly)
-                                        find.Amounts.Assembling += amount;
-                                    else if (assembler.Mode == MyAssemblerMode.Disassembly)
-                                        find.Amounts.Disassembling += amount;
+                                    find.Amounts.AssemblingQuota = 0;
                                 }
+
+                                find.Amounts.AssemblingQuota += MyFixedPoint.DeserializeString(entry.Value);
                             }
                         }
-                        if (!assembler.CooperativeMode)
+                        else if (assembler.Mode == MyAssemblerMode.Disassembly &&
+                                 assembler.CustomData.Contains(ConfigsSections.ItemsDisassembling))
                         {
-                            if (assembler.Mode == MyAssemblerMode.Assembly && block.CustomData.Contains(ConfigsSections.ItemsAssembling))
+                            var config = ConfigObject.Parse(ConfigsSections.ItemsDisassembling,
+                                assembler.CustomData);
+                            if (config == null)
+                                continue;
+
+                            foreach (var entry in config.Data)
                             {
-                                ConfigObject config = ConfigObject.Parse(ConfigsSections.ItemsAssembling, block.CustomData);
-                                if (config != null)
-                                {
-                                    foreach (KeyValuePair<string, string> entry in config.Data)
-                                    {
-                                        ItemObject find = Items.GetItem(entry.Key);
-                                        if (find != null)
-                                        {
-                                            if (find.Amounts.AssemblingQuota < 0)
-                                            {
-                                                find.Amounts.AssemblingQuota = 0;
-                                            }
-                                            find.Amounts.AssemblingQuota += MyFixedPoint.DeserializeString(entry.Value);
-                                        }
-                                    }
-                                }
-                            }
-                            else if (assembler.Mode == MyAssemblerMode.Disassembly && block.CustomData.Contains(ConfigsSections.ItemsDisassembling))
-                            {
-                                ConfigObject config = ConfigObject.Parse(ConfigsSections.ItemsDisassembling, block.CustomData);
-                                if (config != null)
-                                {
-                                    foreach (KeyValuePair<string, string> entry in config.Data)
-                                    {
-                                        ItemObject find = Items.GetItem(entry.Key);
-                                        if (find != null)
-                                        {
-                                            if (find.Amounts.DisassemblingQuota < 0)
-                                            {
-                                                find.Amounts.DisassemblingQuota = 0;
-                                            }
-                                            find.Amounts.DisassemblingQuota += MyFixedPoint.DeserializeString(entry.Value);
-                                        }
-                                    }
-                                }
+                                var find = _items.GetItem(entry.Key);
+                                if (find == null)
+                                    continue;
+
+                                if (find.Amounts.DisassemblingQuota < 0)
+                                    find.Amounts.DisassemblingQuota = 0;
+
+                                find.Amounts.DisassemblingQuota += MyFixedPoint.DeserializeString(entry.Value);
                             }
                         }
                     }
                 }
             }
-            foreach (ItemObject item in Items.GetList())
+
+            foreach (var item in _items.GetList())
             {
                 item.Amounts.IsNew = false;
-                Items.UpdateItem(item);
+                _items.UpdateItem(item);
             }
         }
 
         private void TaskInventoryManager()
         {
-            List<IMyInventory> inventories = new List<IMyInventory>();
-
-            foreach (IMyTerminalBlock block in Blocks.GetBlocks())
+            var inventories = new List<IMyInventory>();
+            foreach (var block in _blocks.GetBlocks().Where(block => block.IsFunctional)
+                         .Where(block => !(block is IMyLargeConveyorTurretBase)))
             {
-                if (!block.IsFunctional)
+                if (block is IMyGasGenerator)
                 {
-                    continue;
-                }
-                else if (block is IMyLargeConveyorTurretBase)
-                {
-                    continue;
-                }
-                else if (block is IMyGasGenerator)
-                {
-                    IMyInventory inventory = block.GetInventory(0);
-                    List<MyInventoryItem> items = new List<MyInventoryItem>();
+                    var inventory = block.GetInventory(0);
+                    var items = new List<MyInventoryItem>();
                     inventory.GetItems(items);
-                    foreach (MyInventoryItem item in items)
+                    foreach (var item in items)
                     {
-                        ItemObject find = Items.GetItem(item.Type.ToString());
+                        var find = _items.GetItem(item.Type.ToString());
                         if (find != null && find.Selector != "Ore/Ice")
-                        {
                             find.Transfer(item, inventory);
-                        }
                     }
                 }
                 else if (block is IMyAssembler)
-                {
                     inventories.Add(block.GetInventory(1));
-                }
                 else if (block is IMyRefinery)
-                {
                     inventories.Add(block.GetInventory(1));
-                }
-                else if (block is IMyEntity)
+                else
                 {
-                    for (int i = 0; i < block.InventoryCount; i++)
+                    for (var i = 0; i < block.InventoryCount; i++)
                     {
                         inventories.Add(block.GetInventory(i));
                     }
                 }
             }
-            Items.TrasferFromInventories(inventories);
+
+            _items.TransferFromInventories(inventories);
         }
 
         private void TaskAssemblersManager()
         {
-            foreach (IMyAssembler assembler in Blocks.GetBlocks(BlocksManager.BlockType.Assemblers))
+            foreach (var assembler in _blocks.GetBlocks(BlocksManager.BlockType.Assemblers).Cast<IMyAssembler>()
+                         .Where(assembler => assembler.IsFunctional))
             {
-                if (!assembler.IsFunctional)
+                // Cleanup source inventory
+                _items.TransferFromInventory(assembler.GetInventory(0));
+
+                // Add items to quota
+                if (!assembler.IsWorking)
                     continue;
-
-                // Cleanup source invetory
-                Items.TrasferFromInventory(assembler.GetInventory(0));
-
-                if (assembler.IsWorking)
+                if (!assembler.CooperativeMode)
                 {
-                    // Add items to quota
-                    if (!assembler.CooperativeMode)
+                    if (assembler.Mode == MyAssemblerMode.Assembly)
                     {
-                        if (assembler.Mode == MyAssemblerMode.Assembly)
+                        // Items Assembling
+                        var config = ConfigObject.Parse(ConfigsSections.ItemsAssembling, assembler.CustomData);
+                        if (config != null)
                         {
-                            // Items Assembling
-                            ConfigObject config = ConfigObject.Parse(ConfigsSections.ItemsAssembling, assembler.CustomData);
-                            if (config != null)
+                            foreach (var entry in config.Data)
                             {
-                                foreach (KeyValuePair<string, string> entry in config.Data)
-                                {
-                                    ItemObject item = Items.GetItem(entry.Key);
-                                    if (item != null && item.Blueprints.Count > 0)
-                                    {
-                                        foreach (KeyValuePair<MyDefinitionId, MyFixedPoint> blueprint in item.Blueprints)
-                                        {
-                                            if (!assembler.CanUseBlueprint(blueprint.Key))
-                                                continue;
+                                var item = _items.GetItem(entry.Key);
+                                if (item == null || item.Blueprints.Count <= 0)
+                                    continue;
 
-                                            MyFixedPoint need = MyFixedPoint.DeserializeString(entry.Value);
-                                            MyFixedPoint total = item.Amounts.Exist + item.Amounts.Assembling;
-                                            if (total < need)
-                                            {
-                                                MyFixedPoint add = need - total;
-                                                int calc = (int)Math.Ceiling((float)add / (float)blueprint.Value);
-                                                MyFixedPoint queue = MyFixedPoint.DeserializeString(calc.ToString());
-
-                                                assembler.Repeating = false;
-                                                assembler.AddQueueItem(blueprint.Key, queue);
-
-                                                item.Amounts.Assembling += queue * blueprint.Value;
-                                                Items.UpdateItem(item);
-                                            }
-
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else if (assembler.Mode == MyAssemblerMode.Disassembly)
-                        {
-                            // Items Disassembling
-                            ConfigObject config = ConfigObject.Parse(ConfigsSections.ItemsDisassembling, assembler.CustomData);
-                            if (config != null)
-                            {
-                                foreach (KeyValuePair<string, string> entry in config.Data)
-                                {
-                                    ItemObject item = Items.GetItem(entry.Key);
-                                    if (item != null && item.Blueprints.Count > 0)
-                                    {
-                                        foreach (KeyValuePair<MyDefinitionId, MyFixedPoint> blueprint in item.Blueprints)
-                                        {
-                                            if (!assembler.CanUseBlueprint(blueprint.Key))
-                                                continue;
-
-                                            string value = entry.Value;
-                                            if (value == null)
-                                                value = "0";
-
-                                            MyFixedPoint need = MyFixedPoint.DeserializeString(value);
-                                            MyFixedPoint total = item.Amounts.Exist - item.Amounts.Disassembling;
-                                            if (total > need)
-                                            {
-                                                MyFixedPoint add = total - need;
-                                                int calc = (int)Math.Round((float)add / (float)blueprint.Value, 0);
-                                                MyFixedPoint queue = MyFixedPoint.DeserializeString(calc.ToString());
-
-                                                assembler.Repeating = false;
-                                                assembler.AddQueueItem(blueprint.Key, queue);
-
-                                                item.Amounts.Disassembling += queue * blueprint.Value;
-                                                Items.UpdateItem(item);
-                                            }
-
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Move items for disassembly
-                    if (assembler.Mode == MyAssemblerMode.Disassembly)
-                    {
-                        List<MyProductionItem> queue = new List<MyProductionItem>();
-                        assembler.GetQueue(queue);
-                        foreach (MyProductionItem queueItem in queue)
-                        {
-                            ItemObject item = Items.GetItem(queueItem.BlueprintId.ToString());
-                            if (item != null && item.Blueprints.Count > 0)
-                            {
-                                foreach (KeyValuePair<MyDefinitionId, MyFixedPoint> blueprint in item.Blueprints)
+                                foreach (var blueprint in item.Blueprints)
                                 {
                                     if (!assembler.CanUseBlueprint(blueprint.Key))
                                         continue;
 
-                                    MyFixedPoint quantity = queueItem.Amount * blueprint.Value;
-                                    InventoryHelper.TransferFromBlocks(item.Type, Blocks.GetBlocks(), assembler.GetInventory(1), quantity);
+                                    var need = MyFixedPoint.DeserializeString(entry.Value);
+                                    var total = item.Amounts.Exist + item.Amounts.Assembling;
+                                    if (total < need)
+                                    {
+                                        var add = need - total;
+                                        var calc = (int)Math.Ceiling((float)add / (float)blueprint.Value);
+                                        var queue = MyFixedPoint.DeserializeString(calc.ToString());
+
+                                        assembler.Repeating = false;
+                                        assembler.AddQueueItem(blueprint.Key, queue);
+
+                                        item.Amounts.Assembling += queue * blueprint.Value;
+                                        _items.UpdateItem(item);
+                                    }
+
+                                    break;
                                 }
                             }
+                        }
+                    }
+                    else if (assembler.Mode == MyAssemblerMode.Disassembly)
+                    {
+                        // Items Disassembling
+                        var config = ConfigObject.Parse(ConfigsSections.ItemsDisassembling, assembler.CustomData);
+                        if (config != null)
+                        {
+                            foreach (var entry in config.Data)
+                            {
+                                var item = _items.GetItem(entry.Key);
+                                if (item == null || item.Blueprints.Count <= 0)
+                                    continue;
+
+                                foreach (var blueprint in item.Blueprints)
+                                {
+                                    if (!assembler.CanUseBlueprint(blueprint.Key))
+                                        continue;
+
+                                    var value = entry.Value ?? "0";
+
+                                    var need = MyFixedPoint.DeserializeString(value);
+                                    var total = item.Amounts.Exist - item.Amounts.Disassembling;
+                                    if (total > need)
+                                    {
+                                        var add = total - need;
+                                        var calc = (int)Math.Round((float)add / (float)blueprint.Value, 0);
+                                        var queue = MyFixedPoint.DeserializeString(calc.ToString());
+
+                                        assembler.Repeating = false;
+                                        assembler.AddQueueItem(blueprint.Key, queue);
+
+                                        item.Amounts.Disassembling += queue * blueprint.Value;
+                                        _items.UpdateItem(item);
+                                    }
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Move items for disassembly
+                if (assembler.Mode != MyAssemblerMode.Disassembly) continue;
+                {
+                    var queue = new List<MyProductionItem>();
+                    assembler.GetQueue(queue);
+                    foreach (var queueItem in queue)
+                    {
+                        var item = _items.GetItem(queueItem.BlueprintId.ToString());
+                        if (item == null || item.Blueprints.Count <= 0)
+                            continue;
+
+                        foreach (var quantity in from blueprint in item.Blueprints
+                                 where assembler.CanUseBlueprint(blueprint.Key)
+                                 select queueItem.Amount * blueprint.Value)
+                        {
+                            InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(),
+                                assembler.GetInventory(1), quantity);
                         }
                     }
                 }
@@ -393,21 +368,23 @@ namespace IngameScript
 
         private void TaskDisplayStatus()
         {
-            List<string> displayData = new List<string>()
+            var displayData = new List<string>()
             {
-                {"= Crowigor's Base Manager ="},
+                { "= Crowigor's Base Manager =" },
             };
-            displayData.AddRange(Tasks.GetStatusText());
+            displayData.AddRange(_tasks.GetStatusText());
 
-            Echo(String.Join("\n", displayData.ToArray()));
+            Echo(string.Join("\n", displayData.ToArray()));
         }
+
         #endregion
 
         #region Script Methods
+
         private void ConfigureMeDisplay()
         {
             // Set display
-            IMyTextSurface display = Me.GetSurface(0);
+            var display = Me.GetSurface(0);
             display.ContentType = ContentType.TEXT_AND_IMAGE;
             display.FontColor = new Color(255, 180, 0);
             display.FontSize = (float)0.9;
@@ -420,27 +397,27 @@ namespace IngameScript
 
         private void CheckGlobalConfig()
         {
-            string section = ConfigsSections.GlobalConfig;
-            ConfigObject configDefault = new ConfigObject(section, new Dictionary<string, string>()
+            const string section = ConfigsSections.GlobalConfig;
+            var configDefault = new ConfigObject(section, new Dictionary<string, string>()
             {
-                {"Tag", "[Base]" },
-                {"Ignore", "[!CBM]" },
-                {"SD:BaseContainersMaxVolume", "90%" },
+                { "Tag", "[Base]" },
+                { "Ignore", "[!CBM]" },
+                { "SD:BaseContainersMaxVolume", "90%" },
             });
-            ConfigObject configCurrent = ConfigObject.Parse(section, Me.CustomData);
-            ConfigObject configNew = ConfigObject.Merge(section, new List<ConfigObject> { configDefault, configCurrent });
+            var configCurrent = ConfigObject.Parse(section, Me.CustomData);
+            var configNew = ConfigObject.Merge(section, new List<ConfigObject> { configDefault, configCurrent });
 
-            List<string> customData = new List<string>()
+            var customData = new List<string>()
             {
                 ";Crowigor's Base Manager",
-                 "[" + section + "]",
+                "[" + section + "]",
             };
-
             customData.AddRange(configNew.ToList());
 
-            GlobalConfig = configNew;
-            Me.CustomData = String.Join("\n", customData.ToArray());
+            _globalConfig = configNew;
+            Me.CustomData = string.Join("\n", customData.ToArray());
         }
+
         #endregion;
     }
 }
