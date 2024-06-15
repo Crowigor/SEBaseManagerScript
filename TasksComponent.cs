@@ -8,7 +8,7 @@ namespace IngameScript
     {
         public class TasksManager
         {
-            private Dictionary<string, TaskObject> _storage = new Dictionary<string, TaskObject>();
+            private readonly Dictionary<string, TaskObject> _storage = new Dictionary<string, TaskObject>();
             public const string InitializationTaskName = "Initialization";
             public const string CalculationTaskName = "Calculation";
 
@@ -170,15 +170,15 @@ namespace IngameScript
 
         public class TaskObject
         {
-            public string Name { get; set; }
-            public Statuses Status { get; set; }
-            public Statuses LastStatus { get; set; }
-            public string Error { get; set; }
-            public int Delay { get; set; }
-            public int CurrentTick { get; set; }
-            public bool NeedInitialization { get; set; }
-            public bool NeedCalculation { get; set; }
-            public Action Method { get; set; }
+            public readonly string Name;
+            public Statuses Status;
+            public Statuses LastStatus;
+            public string Error;
+            public readonly int Delay;
+            public int CurrentTick;
+            public readonly bool NeedInitialization;
+            public readonly bool NeedCalculation;
+            public readonly Action Method;
 
             public enum Statuses
             {

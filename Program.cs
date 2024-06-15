@@ -32,11 +32,15 @@ namespace IngameScript
             public const string InventoryManager = "CBM:IM";
             public const string ItemsAssembling = "CBM:IA";
             public const string ItemsDisassembling = "CBM:ID";
+            public const string StopDrones = "CBM:SD";
+            public const string DisplayStatus = "CBM:DS";
+            public const string DisplayItems = "CBM:DI";
         }
 
         private readonly TasksManager _tasks;
         private BlocksManager _blocks;
         private ItemsManager _items;
+        private Dictionary<string, List<string>> _messages;
         private ConfigObject _globalConfig;
 
         #endregion;
@@ -51,6 +55,7 @@ namespace IngameScript
             _tasks.Add(TasksManager.CalculationTaskName, TaskCalculation, 3);
             _tasks.Add("Inventory Manager", TaskInventoryManager, 10);
             _tasks.Add("Assemblers Manager", TaskAssemblersManager, 5, true, true);
+            _tasks.Add("Connectors Manager", TaskConnectorsManager, 6, true, true);
             _tasks.Add("Display Status", TaskDisplayStatus, 1, false);
 
             // Run Initialization
@@ -80,6 +85,11 @@ namespace IngameScript
                 _items = new ItemsManager();
             else
                 _items.ClearInventories();
+
+            if (_messages != null)
+                _messages.Clear();
+            else
+                _messages = new Dictionary<string, List<string>>();
 
             // Add inventories to items
             foreach (var block in _blocks.GetBlocks(BlocksManager.BlockType.GasTanks))
@@ -366,6 +376,91 @@ namespace IngameScript
             }
         }
 
+        private void TaskConnectorsManager()
+        {
+            if (!_messages.ContainsKey("Stop Drones"))
+                _messages["Stop Drones"] = new List<string>();
+            else
+                _messages["Stop Drones"].Clear();
+
+            foreach (var connector in _blocks.GetBlocks(BlocksManager.BlockType.Connectors).Cast<IMyShipConnector>()
+                         .Where(connector => connector.IsFunctional))
+            {
+                // Stop drones
+                if (connector.CustomData.Contains(ConfigsSections.StopDrones))
+                {
+                    // Legacy replacer
+                    connector.CustomData = connector.CustomData.Replace("DronBlocksName", "DroneBlocksName");
+
+                    var config = ConfigObject.Parse(ConfigsSections.StopDrones, connector.CustomData);
+                    var droneBlocksName = config.Get("DroneBlocksName");
+                    var baseContainersName = config.Get("BaseContainersName");
+
+                    string error = null;
+                    if (string.IsNullOrEmpty(droneBlocksName))
+                        error = "Empty DroneBlocksName";
+                    if (string.IsNullOrEmpty(baseContainersName))
+                        error = "Empty BaseContainersName";
+
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        _messages["Stop Drones"].Add(connector.CustomName + ": " + error);
+                        continue;
+                    }
+
+                    if (connector.Status != MyShipConnectorStatus.Connected)
+                        continue;
+
+                    var otherConnector = connector.OtherConnector;
+                    var blocks = new List<IMyTerminalBlock>();
+                    GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks,
+                        block => block.CubeGrid == otherConnector.CubeGrid &&
+                                 block.CustomName.Contains(droneBlocksName));
+                    if (blocks.Count == 0)
+                    {
+                        _messages["Stop Drones"].Add(connector.CustomName + ": " +
+                                                     "Can't find drones blocks `" + droneBlocksName + "`");
+                        continue;
+                    }
+
+                    var blockActive = true;
+                    if (baseContainersName != null)
+                    {
+                        float current = 0;
+                        float total = 0;
+
+                        foreach (var inventory in from IMyCargoContainer container in
+                                     _blocks.GetBlocks(BlocksManager.BlockType.Containers)
+                                 where container.CustomName.Contains(baseContainersName)
+                                 select container.GetInventory(0))
+                        {
+                            current += (float)inventory.CurrentVolume;
+                            total += (float)inventory.MaxVolume;
+                        }
+
+                        var maxConfig = config.Get("BaseContainersMaxVolume",
+                            _globalConfig.Get("SD:BaseContainersMaxVolume", "90%"));
+
+                        var percent = maxConfig.Contains("%");
+                        var max = (float)MyFixedPoint.DeserializeString(maxConfig.Replace("%", ""));
+                        if (percent)
+                        {
+                            var calc = current / total * 100;
+                            if (calc >= max)
+                                blockActive = false;
+                        }
+                        else if (current >= total)
+                            blockActive = false;
+                    }
+
+                    foreach (var block in blocks)
+                    {
+                        block.ApplyAction(blockActive ? "OnOff_On" : "OnOff_Off");
+                    }
+                }
+            }
+        }
+
         private void TaskDisplayStatus()
         {
             var displayData = new List<string>()
@@ -373,6 +468,16 @@ namespace IngameScript
                 { "= Crowigor's Base Manager =" },
             };
             displayData.AddRange(_tasks.GetStatusText());
+
+            if (_messages.Count > 0)
+            {
+                displayData.Add("");
+                foreach (var entry in _messages.Where(entry => entry.Value.Count != 0))
+                {
+                    displayData.Add(entry.Key + ": ");
+                    displayData.AddRange(entry.Value.Select(message => "   " + message));
+                }
+            }
 
             Echo(string.Join("\n", displayData.ToArray()));
         }
