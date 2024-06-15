@@ -9,19 +9,19 @@ namespace IngameScript
         {
             private Dictionary<string, TaskObject> m_Storage;
             public const string InitializationTaskName = "Initialization";
-            public enum TaskStatus { Wait, Progress, Error, Success, Initialization, Null }
+            public const string CalculationTaskName = "Calculation";
 
             public TasksManager()
             {
                 m_Storage = new Dictionary<string, TaskObject>();
             }
-            public void Add(string name, Action method, int delay = 0, bool needInitialization = true)
+            public void Add(string name, Action method, int delay = 0, bool needInitialization = true, bool needCalculation = false)
             {
                 if (delay < 1)
                 {
                     delay = 1;
                 }
-                TaskObject task = new TaskObject(name, method, delay, needInitialization);
+                TaskObject task = new TaskObject(name, method, delay, needInitialization, needCalculation);
                 m_Storage[task.Name] = task;
             }
 
@@ -32,71 +32,78 @@ namespace IngameScript
 
             public void Run()
             {
-                bool initializationSuccess = CheckInitialization();
                 foreach (string key in new List<string>(m_Storage.Keys))
                 {
                     TaskObject task = m_Storage[key];
 
-                    UpdateStorageItem(task);
-                    if (task.Status == TaskStatus.Progress)
+                    if (task.Status == TaskObject.Statuses.Progress)
                     {
                         continue;
                     }
-                    else if (task.Status == TaskStatus.Success || task.Status == TaskStatus.Error)
+                    else if (task.Status == TaskObject.Statuses.Success || task.Status == TaskObject.Statuses.Error)
                     {
                         task.CurrentTick = 2;
                         task.LastStatus = task.Status;
-                        task.Status = TaskStatus.Wait;
+                        task.Status = TaskObject.Statuses.Wait;
 
-                        UpdateStorageItem(task);
+                        UpdateTask(task);
                     }
-                    else if (task.Status == TaskStatus.Wait || task.Status == TaskStatus.Initialization)
+                    else if (task.Status == TaskObject.Statuses.Wait || task.Status == TaskObject.Statuses.Skip)
                     {
                         if (task.CurrentTick >= task.Delay)
                         {
                             task.CurrentTick = 1;
                             task.Error = null;
-                            task.LastStatus = TaskStatus.Null;
+                            task.LastStatus = TaskObject.Statuses.Null;
 
-                            if (!task.NeedInitialization || initializationSuccess)
+                            bool skipTask = false;
+                            if (task.NeedInitialization && !CheckInitialization())
+                                skipTask = true;
+                            if (task.NeedCalculation && !CheckCalculation())
+                                skipTask = true;
+
+                            if (!skipTask)
                             {
-                                task.Status = TaskStatus.Progress;
-                                UpdateStorageItem(task);
+                                task.Status = TaskObject.Statuses.Progress;
+                                UpdateTask(task);
 
                                 if (task.Method == null)
                                 {
                                     task.Error = "Method not found";
-                                    task.Status = TaskStatus.Error;
-                                    UpdateStorageItem(task);
+                                    task.Status = TaskObject.Statuses.Error;
+                                    UpdateTask(task);
                                 }
-
                                 else
                                 {
                                     try
                                     {
                                         task.Method();
-                                        task.Status = (task.Delay == 1) ? TaskStatus.Wait : TaskStatus.Success;
-                                        UpdateStorageItem(task);
+                                        task.Status = (task.Delay == 1) ? TaskObject.Statuses.Wait : TaskObject.Statuses.Success;
+                                        UpdateTask(task);
+                                        if (task.Name == InitializationTaskName && m_Storage.ContainsKey(CalculationTaskName))
+                                        {
+                                            m_Storage[CalculationTaskName].LastStatus = TaskObject.Statuses.Null;
+                                        }
                                     }
                                     catch (Exception e)
                                     {
                                         task.Error = e.Message;
-                                        task.Status = TaskStatus.Error;
-                                        UpdateStorageItem(task);
+                                        task.Status = TaskObject.Statuses.Error;
+                                        UpdateTask(task);
                                     }
                                 }
                             }
                             else
                             {
                                 task.CurrentTick = task.Delay;
-                                task.Status = TaskStatus.Initialization;
-                                UpdateStorageItem(task);
+                                task.Status = TaskObject.Statuses.Skip;
+                                UpdateTask(task);
                             }
                         }
                         else
                         {
                             task.CurrentTick++;
-                            UpdateStorageItem(task);
+                            UpdateTask(task);
                         }
                     }
                 }
@@ -113,12 +120,12 @@ namespace IngameScript
 
                     if (task.Delay > 1)
                     {
-                        text += (task.Status == TaskStatus.Wait) ? task.LastStatus : task.Status;
-                        if (task.Status != TaskStatus.Initialization)
+                        text += (task.Status == TaskObject.Statuses.Wait) ? task.LastStatus : task.Status;
+                        if (task.Status != TaskObject.Statuses.Skip)
                             text += " (" + task.CurrentTick + "/" + task.Delay + ")";
                     }
                     else
-                        text += (task.Status != TaskStatus.Error) ? TaskStatus.Success : task.Status;
+                        text += (task.Status != TaskObject.Statuses.Error) ? TaskObject.Statuses.Success : task.Status;
 
                     result.Add(text);
 
@@ -141,19 +148,40 @@ namespace IngameScript
 
                 bool result = false;
                 TaskObject task = m_Storage[InitializationTaskName];
-                if (task.Status == TaskStatus.Success)
+                if (task.Status == TaskObject.Statuses.Success)
                 {
                     result = true;
                 }
-                else if (task.Status == TaskStatus.Wait)
+                else if (task.Status == TaskObject.Statuses.Wait)
                 {
-                    result = (task.LastStatus == TaskStatus.Success);
+                    result = (task.LastStatus == TaskObject.Statuses.Success);
                 }
 
                 return result;
             }
 
-            private void UpdateStorageItem(TaskObject task)
+            private bool CheckCalculation()
+            {
+                if (!m_Storage.ContainsKey(CalculationTaskName))
+                {
+                    return false;
+                }
+
+                bool result = false;
+                TaskObject task = m_Storage[CalculationTaskName];
+                if (task.Status == TaskObject.Statuses.Success)
+                {
+                    result = true;
+                }
+                else if (task.Status == TaskObject.Statuses.Wait)
+                {
+                    result = (task.LastStatus == TaskObject.Statuses.Success);
+                }
+
+                return result;
+            }
+
+            private void UpdateTask(TaskObject task)
             {
                 m_Storage[task.Name] = task;
             }
@@ -163,23 +191,26 @@ namespace IngameScript
         public class TaskObject
         {
             public string Name { get; set; }
-            public TasksManager.TaskStatus Status { get; set; }
-            public TasksManager.TaskStatus LastStatus { get; set; }
+            public Statuses Status { get; set; }
+            public Statuses LastStatus { get; set; }
             public string Error { get; set; }
             public int Delay { get; set; }
             public int CurrentTick { get; set; }
             public bool NeedInitialization { get; set; }
+            public bool NeedCalculation { get; set; }
             public Action Method { get; set; }
+            public enum Statuses { Wait, Progress, Error, Success, Skip, Null }
 
-            public TaskObject(string name, Action method, int delay = 0, bool needInitialization = true)
+            public TaskObject(string name, Action method, int delay = 0, bool needInitialization = true, bool needCalculation = false)
             {
                 Name = name;
-                Status = TasksManager.TaskStatus.Wait;
-                LastStatus = TasksManager.TaskStatus.Null;
+                Status = Statuses.Wait;
+                LastStatus = Statuses.Null;
                 Error = null;
                 Delay = delay;
                 CurrentTick = delay;
                 NeedInitialization = needInitialization;
+                NeedCalculation = needCalculation;
                 Method = method;
             }
         }

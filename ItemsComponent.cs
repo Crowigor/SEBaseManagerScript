@@ -66,11 +66,31 @@ namespace IngameScript
                 return item;
             }
 
-            public void ResetData()
+            public List<ItemObject> GetList()
             {
-                foreach (string key in m_Storage.Keys)
+                return m_Storage.Values.ToList();
+            }
+            public void UpdateItem(ItemObject item)
+            {
+                if (item == null)
+                    return;
+
+                m_Storage[item.Selector] = item;
+            }
+
+            public void ClearInventories()
+            {
+                foreach (ItemObject item in m_Storage.Values)
                 {
-                    m_Storage[key].ResetData();
+                    item.ClearInventories();
+                }
+            }
+
+            public void ClearAmounts()
+            {
+                foreach (ItemObject item in m_Storage.Values)
+                {
+                    item.ClearAmount();
                 }
             }
 
@@ -104,7 +124,8 @@ namespace IngameScript
             public List<string> Aliases { get; set; }
             public Dictionary<MyDefinitionId, MyFixedPoint> Blueprints { get; set; }
             public List<IMyInventory> Inventories { get; set; }
-            public Dictionary<string, MyFixedPoint> Amount { get; set; }
+            public ItemAmountsObject Amounts { get; set; }
+
             public bool IsNewAmount { get; set; }
 
             public ItemObject(string name, string localization, string type, Dictionary<string, string> blueprints = null)
@@ -114,40 +135,31 @@ namespace IngameScript
                 Localization = localization;
                 Type = MyItemType.Parse(type);
                 Aliases = new List<string>() { Selector, Name, Localization, Type.ToString() };
-
                 Blueprints = new Dictionary<MyDefinitionId, MyFixedPoint>();
                 if (blueprints != null)
                 {
                     foreach (KeyValuePair<string, string> entry in blueprints)
                     {
                         Blueprints[MyDefinitionId.Parse(entry.Key)] = MyFixedPoint.DeserializeString(entry.Value);
-
                     }
                 }
 
-                ResetData();
+                ClearInventories();
+                ClearAmount();
             }
 
             public bool IsCrafteble()
             {
                 return (Blueprints.Count > 0);
             }
-
-            public void ResetData()
-            {
-                ClearAmount();
-                ClearInventories();
-            }
-
+          
             public void ClearAmount()
             {
-                IsNewAmount = true;
-                Amount = new Dictionary<string, MyFixedPoint>() {
-                    {"exist", MyFixedPoint.Zero},
-                    {"quota", MyFixedPoint.Zero},
-                    {"assembling", MyFixedPoint.Zero},
-                    {"disassembling", MyFixedPoint.Zero},
-                };
+                if (Amounts != null)
+                    Amounts.Clear();
+                else
+                    Amounts = new ItemAmountsObject();
+
             }
 
             public void ClearInventories()
@@ -166,6 +178,33 @@ namespace IngameScript
                 MyFixedPoint zero = MyFixedPoint.Zero;
 
                 return InventoryHelper.TransferToInventories(inventoryItem, sourceInventory, Inventories, amount);
+            }
+
+
+        }
+
+        public class ItemAmountsObject
+        {
+            public bool IsNew { get; set; }
+            public MyFixedPoint Exist { get; set; }
+            public MyFixedPoint Assembling { get; set; }
+            public MyFixedPoint AssemblingQuota { get; set; }
+            public MyFixedPoint Disassembling { get; set; }
+            public MyFixedPoint DisassemblingQuota { get; set; }
+
+            public ItemAmountsObject()
+            {
+                Clear();
+            }
+
+            public void Clear()
+            {
+                IsNew = true;
+                Exist = MyFixedPoint.Zero;
+                Assembling = MyFixedPoint.Zero;
+                AssemblingQuota = -1;
+                Disassembling = MyFixedPoint.Zero;
+                DisassemblingQuota = -1;
             }
         }
     }
