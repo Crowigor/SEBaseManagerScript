@@ -11,8 +11,9 @@ namespace IngameScript
     {
         public class BlocksManager
         {
-            private Dictionary<long, IMyTerminalBlock> m_Storage;
-            private Dictionary<BlockType, List<long>> m_StorageByTypes;
+            private Dictionary<long, IMyTerminalBlock> _storage;
+            private Dictionary<BlockType, List<long>> _storageByTypes;
+
             public enum BlockType
             {
                 All,
@@ -36,12 +37,12 @@ namespace IngameScript
 
             public BlocksManager(IMyGridTerminalSystem grid, string tag, string ignore)
             {
-                m_Storage = new Dictionary<long, IMyTerminalBlock>();
-                m_StorageByTypes = new Dictionary<BlockType, List<long>>();
+                _storage = new Dictionary<long, IMyTerminalBlock>();
+                _storageByTypes = new Dictionary<BlockType, List<long>>();
 
                 foreach (BlockType type in Enum.GetValues(typeof(BlockType)))
                 {
-                    m_StorageByTypes[type] = new List<long>();
+                    _storageByTypes[type] = new List<long>();
                 }
 
                 List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
@@ -53,49 +54,49 @@ namespace IngameScript
                     if (!block.IsFunctional || block.CustomName.Contains(ignore) || block.CustomData.Contains(ignore))
                         continue;
 
-                    m_Storage[block.EntityId] = block;
+                    _storage[block.EntityId] = block;
 
                     if (block is IMyAssembler)
-                        m_StorageByTypes[BlockType.Assemblers].Add(block.EntityId);
+                        _storageByTypes[BlockType.Assemblers].Add(block.EntityId);
 
                     if (block is IMyCollector)
-                        m_StorageByTypes[BlockType.Collectors].Add(block.EntityId);
+                        _storageByTypes[BlockType.Collectors].Add(block.EntityId);
 
                     if (block is IMyShipConnector)
-                        m_StorageByTypes[BlockType.Connectors].Add(block.EntityId);
+                        _storageByTypes[BlockType.Connectors].Add(block.EntityId);
 
                     if (block is IMyCargoContainer)
-                        m_StorageByTypes[BlockType.Containers].Add(block.EntityId);
+                        _storageByTypes[BlockType.Containers].Add(block.EntityId);
 
                     if (block is IMyCryoChamber)
-                        m_StorageByTypes[BlockType.CryoChambers].Add(block.EntityId);
+                        _storageByTypes[BlockType.CryoChambers].Add(block.EntityId);
 
                     if (block is IMyTextPanel)
-                        m_StorageByTypes[BlockType.Displays].Add(block.EntityId);
+                        _storageByTypes[BlockType.Displays].Add(block.EntityId);
 
                     if (block is IMyShipDrill)
-                        m_StorageByTypes[BlockType.Drills].Add(block.EntityId);
+                        _storageByTypes[BlockType.Drills].Add(block.EntityId);
 
                     if (block is IMyGasGenerator)
-                        m_StorageByTypes[BlockType.GasGenerators].Add(block.EntityId);
+                        _storageByTypes[BlockType.GasGenerators].Add(block.EntityId);
 
                     if (block is IMyGasTank)
-                        m_StorageByTypes[BlockType.GasTanks].Add(block.EntityId);
+                        _storageByTypes[BlockType.GasTanks].Add(block.EntityId);
 
                     if (block is IMyShipGrinder)
-                        m_StorageByTypes[BlockType.Grinders].Add(block.EntityId);
+                        _storageByTypes[BlockType.Grinders].Add(block.EntityId);
 
                     if (block is IMyPistonBase)
-                        m_StorageByTypes[BlockType.Pistons].Add(block.EntityId);
+                        _storageByTypes[BlockType.Pistons].Add(block.EntityId);
 
                     if (block is IMyRefinery)
-                        m_StorageByTypes[BlockType.Refineries].Add(block.EntityId);
+                        _storageByTypes[BlockType.Refineries].Add(block.EntityId);
 
                     if (block is IMyConveyorSorter)
-                        m_StorageByTypes[BlockType.Sorters].Add(block.EntityId);
+                        _storageByTypes[BlockType.Sorters].Add(block.EntityId);
 
                     if (block is IMyLargeConveyorTurretBase)
-                        m_StorageByTypes[BlockType.Turrets].Add(block.EntityId);
+                        _storageByTypes[BlockType.Turrets].Add(block.EntityId);
 
                     if (block is IMyShipWelder)
                     {
@@ -104,43 +105,52 @@ namespace IngameScript
                         bool isBuildAndRepair = properties.Any(p => p.Id.Contains("BuildAndRepair"));
                         if (isBuildAndRepair)
                         {
-                            m_StorageByTypes[BlockType.BuildAndRepair].Add(block.EntityId);
+                            _storageByTypes[BlockType.BuildAndRepair].Add(block.EntityId);
                         }
                         else
                         {
-                            m_StorageByTypes[BlockType.Welders].Add(block.EntityId);
+                            _storageByTypes[BlockType.Welders].Add(block.EntityId);
                         }
                     }
                 }
+            }
+
+            public IMyTerminalBlock GetBlock(long selector, BlockType blockType = BlockType.All)
+            {
+                if (!_storage.ContainsKey(selector))
+                    return null;
+
+                if (blockType != BlockType.All && !_storageByTypes[blockType].Contains(selector))
+                    return null;
+
+                return _storage[selector];
             }
 
             public List<IMyTerminalBlock> GetBlocks(BlockType blockType = BlockType.All)
             {
                 if (blockType == BlockType.All)
-                    return m_Storage.Values.ToList();
+                    return _storage.Values.ToList();
 
                 List<IMyTerminalBlock> result = new List<IMyTerminalBlock>();
-                if (!m_StorageByTypes.ContainsKey(blockType) || m_StorageByTypes[blockType].Count == 0)
+                if (!_storageByTypes.ContainsKey(blockType) || _storageByTypes[blockType].Count == 0)
                     return result;
 
-                foreach (long EntityId in m_StorageByTypes[blockType])
+                foreach (long EntityId in _storageByTypes[blockType])
                 {
-                    if (m_Storage.ContainsKey(EntityId))
+                    if (_storage.ContainsKey(EntityId))
                     {
-                        result.Add(m_Storage[EntityId]);
+                        result.Add(_storage[EntityId]);
                     }
                 }
 
                 return result;
-
             }
 
             public void Clear()
             {
-                m_Storage.Clear();
-                m_StorageByTypes.Clear();
+                _storage.Clear();
+                _storageByTypes.Clear();
             }
         }
-
     }
 }

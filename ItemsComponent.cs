@@ -148,12 +148,12 @@ namespace IngameScript
 
         public class ItemAmountsObject
         {
-            public bool IsNew { get; set; }
-            public MyFixedPoint Exist { get; set; }
-            public MyFixedPoint Assembling { get; set; }
-            public MyFixedPoint AssemblingQuota { get; set; }
-            public MyFixedPoint Disassembling { get; set; }
-            public MyFixedPoint DisassemblingQuota { get; set; }
+            public bool IsNew;
+            public MyFixedPoint Exist;
+            public MyFixedPoint Assembling;
+            public MyFixedPoint AssemblingQuota;
+            public MyFixedPoint Disassembling;
+            public MyFixedPoint DisassemblingQuota;
 
             public ItemAmountsObject()
             {
