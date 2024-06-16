@@ -19,6 +19,27 @@ namespace IngameScript
                 UpdateDataCurrentTick = 0;
                 Lines = new Dictionary<int, List<MySprite>>();
             }
+
+            public Dictionary<int, List<MySprite>> GetLines(int limit = 0)
+            {
+                if (limit <= 0)
+                {
+                    return Lines;
+                }
+
+                var count = 0;
+                var result = new Dictionary<int, List<MySprite>>();
+                foreach (var line in Lines)
+                {
+                    if (count == limit)
+                        break;
+
+                    result[line.Key] = line.Value;
+                    count++;
+                }
+
+                return result;
+            }
         }
     }
 }

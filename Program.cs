@@ -156,11 +156,12 @@ namespace IngameScript
 
                 var configDefault = new ConfigObject(ConfigsSections.DisplayConfig, new Dictionary<string, string>
                 {
-                    { "padding", "10" },
+                    { "title", "" },
                     { "font", "Debug" },
                     { "fontSize", "0.8" },
                     { "lineHeight", "32" },
-                    { "border", "1" }
+                    { "padding", "10" },
+                    { "border", "1" },
                 });
                 var configCurrent = ConfigObject.Parse(ConfigsSections.DisplayConfig, terminalBlock.CustomData);
                 var config = ConfigsHelper.Merge(ConfigsSections.DisplayConfig,
@@ -645,8 +646,8 @@ namespace IngameScript
 
                 _displays[selector] = displayObject;
 
+                var config = ConfigObject.Parse(ConfigsSections.DisplayConfig, terminalBlock.CustomData);
                 var display = (IMyTextPanel)terminalBlock;
-                var config = ConfigObject.Parse(ConfigsSections.DisplayConfig, display.CustomData);
                 var viewport = new RectangleF((display.TextureSize - display.SurfaceSize) / 2f, display.SurfaceSize);
                 var padding = float.Parse(config.Get("padding"));
                 var font = config.Get("font");
@@ -656,6 +657,7 @@ namespace IngameScript
                 var positionLeft = viewport.X + padding;
                 var positionRight = viewport.X + viewport.Width - padding;
                 var positionTop = viewport.Y + padding;
+                var positionBottom = viewport.Y + viewport.Height - padding;
 
                 var frame = display.DrawFrame();
                 // Main border
@@ -686,13 +688,14 @@ namespace IngameScript
                     frame.Add(outerRectSprite);
                     frame.Add(innerRectSprite);
 
-                    positionLeft = viewport.X + padding + border + padding;
-                    positionRight = viewport.X + viewport.Width - padding - border - padding;
-                    positionTop = viewport.Y + padding + border + padding;
+                    positionLeft = viewport.X + border + padding * 2;
+                    positionRight = viewport.X + viewport.Width - border - padding * 2;
+                    positionTop = viewport.Y + border + padding * 2;
+                    positionBottom = viewport.Y + viewport.Height - border - padding * 2;
                 }
 
                 // Title
-                var title = display.GetPublicTitle();
+                var title = config.Get("title");
                 if (!string.IsNullOrEmpty(title))
                 {
                     var titleWidth = title.Length * 15 * fontSize;
@@ -741,11 +744,12 @@ namespace IngameScript
 
                     frame.Add(titleSprite);
 
-                    positionTop = viewport.Y + padding + lineHeight + padding;
+                    positionTop = viewport.Y + lineHeight + padding * 2;
                 }
 
                 // Content
-                foreach (var line in displayObject.Lines)
+                var limit = (int)Math.Round((positionBottom - positionTop) / lineHeight);
+                foreach (var line in displayObject.GetLines(limit))
                 {
                     if (line.Value.Count == 0)
                     {
@@ -848,8 +852,8 @@ namespace IngameScript
 
             if (value >= 1000)
                 return (value / 1000.0).ToString("0.#") + "K";
-            else
-                return value.ToString("0");
+
+            return value.ToString("0");
         }
 
         #endregion;
