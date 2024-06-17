@@ -35,7 +35,7 @@ namespace IngameScript
             public const string StopDrones = "CBM:SD";
             public const string DisplayStatus = "CBM:DS";
             public const string DisplayItems = "CBM:DI";
-            public static List<string> Displays = new List<string> { DisplayConfig, DisplayStatus, DisplayItems };
+            public static readonly List<string> Displays = new List<string> { DisplayStatus, DisplayItems };
         }
 
         private readonly TasksManager _tasks;
@@ -97,7 +97,6 @@ namespace IngameScript
             else
                 _messages.Clear();
 
-
             // Add inventories to items
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTanks))
             {
@@ -140,33 +139,22 @@ namespace IngameScript
                 if (!ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
                     continue;
 
+                var config = GetDisplayConfig(terminalBlock);
                 var selector = terminalBlock.GetId();
                 var delay = terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus) ? 1 : 5;
+                var listingDelay = int.Parse(config.Get("listingDelay"));
 
                 DisplayObject display;
                 if (_displays.ContainsKey(selector))
                 {
                     display = _displays[selector];
-                    display.UpdateDataDelay = delay;
+                    display.UpdateDelay = delay;
+                    display.ListingDelay = listingDelay;
                 }
                 else
-                    display = new DisplayObject(selector, delay);
+                    display = new DisplayObject(selector, delay, listingDelay);
 
                 displays[selector] = display;
-
-                var configDefault = new ConfigObject(ConfigsSections.DisplayConfig, new Dictionary<string, string>
-                {
-                    { "title", "" },
-                    { "font", "Debug" },
-                    { "fontSize", "0.8" },
-                    { "lineHeight", "32" },
-                    { "padding", "10" },
-                    { "border", "1" },
-                });
-                var configCurrent = ConfigObject.Parse(ConfigsSections.DisplayConfig, terminalBlock.CustomData);
-                var config = ConfigsHelper.Merge(ConfigsSections.DisplayConfig,
-                    new List<ConfigObject> { configDefault, configCurrent });
-                terminalBlock.CustomData = ConfigsHelper.ToCustomData(config, terminalBlock.CustomData);
             }
 
             _displays = displays;
@@ -540,17 +528,18 @@ namespace IngameScript
 
                 // Update display lines
                 var displayObject = _displays[selector];
-                displayObject.UpdateDataCurrentTick++;
-                if (displayObject.UpdateDataCurrentTick >= displayObject.UpdateDataDelay)
+                var config = GetDisplayConfig(terminalBlock);
+                var language = config.Get("language");
+                displayObject.Tick();
+                if (displayObject.NeedUpdate())
                 {
-                    displayObject.Lines.Clear();
+                    displayObject.TickReset();
+                    displayObject.ClearLines();
                     if (terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus))
                     {
-                        var i = 0;
                         foreach (var line in _tasks.GetStatusText())
                         {
-                            i++;
-                            displayObject.Lines[i] = new List<MySprite> { new MySprite { Data = line } };
+                            displayObject.AddTextLine(line);
                         }
 
                         foreach (var messageSection in _messages)
@@ -558,28 +547,24 @@ namespace IngameScript
                             if (messageSection.Value.Count == 0)
                                 continue;
 
-                            i++;
-                            displayObject.Lines[i] = new List<MySprite>();
-
-                            i++;
-                            displayObject.Lines[i] = new List<MySprite>
-                                { new MySprite { Data = messageSection.Key + ":" } };
+                            displayObject.AddBlankLine();
+                            displayObject.AddTextLine(messageSection.Key + ":");
 
                             foreach (var message in messageSection.Value.ToList())
                             {
-                                i++;
-                                displayObject.Lines[i] = new List<MySprite>
-                                    { new MySprite { Data = message, Alignment = TextAlignment.LEFT, } };
+                                displayObject.AddTextLine(message);
                             }
                         }
                     }
                     else
                     {
-                        var i = 0;
                         var configs = ConfigsHelper.GetSections(terminalBlock.CustomData);
                         foreach (var configSection in configs)
                         {
                             if (configSection.Value.Count == 0)
+                                continue;
+
+                            if (!ConfigsSections.Displays.Contains(configSection.Key))
                                 continue;
 
                             foreach (var line in configSection.Value.ToList())
@@ -587,8 +572,7 @@ namespace IngameScript
                                 var clear = line.Trim();
                                 if (string.IsNullOrEmpty(clear))
                                 {
-                                    displayObject.Lines[i] = new List<MySprite>();
-                                    i++;
+                                    displayObject.AddBlankLine();
                                     continue;
                                 }
 
@@ -597,48 +581,15 @@ namespace IngameScript
                                     var item = _items.GetItem(clear);
                                     if (item != null)
                                     {
-                                        displayObject.Lines[i] = new List<MySprite>();
-                                        displayObject.Lines[i].Add(new MySprite { Data = clear });
-
-                                        string amount = AmountToString(item.Amounts.Exist);
-                                        if (item.Amounts.AssemblingQuota > 0 || item.Amounts.DisassemblingQuota > 0)
-                                        {
-                                            amount += "/";
-                                            MyFixedPoint quota = -1;
-                                            if (item.Amounts.AssemblingQuota >= 0)
-                                            {
-                                                quota = item.Amounts.AssemblingQuota;
-                                            }
-
-                                            if (item.Amounts.DisassemblingQuota >= 0)
-                                            {
-                                                if (quota >= 0 && item.Amounts.DisassemblingQuota < quota)
-                                                    quota = item.Amounts.DisassemblingQuota;
-                                                else if (quota < 0)
-                                                    quota = item.Amounts.DisassemblingQuota;
-                                            }
-
-                                            amount += AmountToString(quota);
-                                        }
-
-                                        if (item.Amounts.Assembling > 0 || item.Amounts.Disassembling > 0)
-                                        {
-                                            amount += " (";
-                                            if (item.Amounts.Assembling > 0)
-                                                amount += "+" + AmountToString(item.Amounts.Assembling);
-
-                                            if (item.Amounts.Disassembling > 0)
-                                                amount += "0" + AmountToString(item.Amounts.Disassembling);
-
-                                            amount += ")";
-                                        }
-
-                                        displayObject.Lines[i].Add(new MySprite
-                                            { Data = amount, Alignment = TextAlignment.RIGHT });
+                                        displayObject.AddLine(
+                                            DisplayObject.TextSprite(item.Title(language)),
+                                            DisplayObject.TextSprite(item.Amounts.ToString(), TextAlignment.RIGHT)
+                                        );
+                                        continue;
                                     }
-
-                                    i++;
                                 }
+
+                                displayObject.AddCustomTextLine(line);
                             }
                         }
                     }
@@ -646,9 +597,9 @@ namespace IngameScript
 
                 _displays[selector] = displayObject;
 
-                var config = ConfigObject.Parse(ConfigsSections.DisplayConfig, terminalBlock.CustomData);
                 var display = (IMyTextPanel)terminalBlock;
-                var viewport = new RectangleF((display.TextureSize - display.SurfaceSize) / 2f, display.SurfaceSize);
+                var frame = display.DrawFrame();
+                var viewport = DisplayObject.GetViewport(display);
                 var padding = float.Parse(config.Get("padding"));
                 var font = config.Get("font");
                 var fontSize = float.Parse(config.Get("fontSize"));
@@ -656,37 +607,15 @@ namespace IngameScript
                 var border = float.Parse(config.Get("border"));
                 var positionLeft = viewport.X + padding;
                 var positionRight = viewport.X + viewport.Width - padding;
+                var positionCenter = viewport.X + viewport.Width / 2;
                 var positionTop = viewport.Y + padding;
                 var positionBottom = viewport.Y + viewport.Height - padding;
 
-                var frame = display.DrawFrame();
                 // Main border
                 if (border > 0)
                 {
-                    var outerRectSize = new Vector2(viewport.Width - 2 * padding, viewport.Height - 2 * padding);
-                    var innerRectSize =
-                        new Vector2(outerRectSize.X - 2 * border, outerRectSize.Y - 2 * border);
-                    var rectPosition = new Vector2(viewport.X + viewport.Width / 2, viewport.Y + viewport.Height / 2);
-                    var outerRectSprite = new MySprite
-                    {
-                        Type = SpriteType.TEXTURE,
-                        Data = "SquareSimple",
-                        Position = rectPosition,
-                        Size = outerRectSize,
-                        Color = display.ScriptForegroundColor,
-                        Alignment = TextAlignment.CENTER
-                    };
-                    var innerRectSprite = new MySprite
-                    {
-                        Type = SpriteType.TEXTURE,
-                        Data = "SquareSimple",
-                        Position = rectPosition,
-                        Size = innerRectSize,
-                        Color = display.ScriptBackgroundColor,
-                        Alignment = TextAlignment.CENTER
-                    };
-                    frame.Add(outerRectSprite);
-                    frame.Add(innerRectSprite);
+                    foreach (var sprite in DisplayObject.GetSurfaceBorder(display, border, padding))
+                        frame.Add(sprite);
 
                     positionLeft = viewport.X + border + padding * 2;
                     positionRight = viewport.X + viewport.Width - border - padding * 2;
@@ -698,81 +627,48 @@ namespace IngameScript
                 var title = config.Get("title");
                 if (!string.IsNullOrEmpty(title))
                 {
-                    var titleWidth = title.Length * 15 * fontSize;
-                    var titleSize = new Vector2(titleWidth, lineHeight);
-                    var titlePosition = new Vector2(viewport.X + viewport.Width / 2,
-                        viewport.Y + lineHeight / 2 * fontSize);
-                    var titleSprite = new MySprite
-                    {
-                        Type = SpriteType.TEXT,
-                        Data = title,
-                        Position = titlePosition,
-                        RotationOrScale = fontSize,
-                        Color = display.ScriptForegroundColor,
-                        FontId = font,
-                        Alignment = TextAlignment.CENTER
-                    };
-
-                    if (border > 0)
-                    {
-                        var titleRectPosition = new Vector2(titlePosition.X, viewport.Y + padding + lineHeight / 2);
-                        var titleOuterRectSize = new Vector2(titleSize.X + 2 * padding, lineHeight);
-                        var titleInnerRectSize = new Vector2(titleOuterRectSize.X - 2 * border,
-                            lineHeight - 2 * border);
-
-                        var titleOuterRectSprite = new MySprite
-                        {
-                            Type = SpriteType.TEXTURE,
-                            Data = "SquareSimple",
-                            Position = titleRectPosition,
-                            Size = titleOuterRectSize,
-                            Color = display.ScriptForegroundColor,
-                            Alignment = TextAlignment.CENTER
-                        };
-                        var titleInnerRectSprite = new MySprite
-                        {
-                            Type = SpriteType.TEXTURE,
-                            Data = "SquareSimple",
-                            Position = titleRectPosition,
-                            Size = titleInnerRectSize,
-                            Color = display.ScriptBackgroundColor,
-                            Alignment = TextAlignment.CENTER
-                        };
-                        frame.Add(titleOuterRectSprite);
-                        frame.Add(titleInnerRectSprite);
-                    }
-
-                    frame.Add(titleSprite);
+                    display.WritePublicTitle(title);
+                    foreach (var sprite in DisplayObject.GetSurfaceTitle(display, title, font, fontSize, lineHeight,
+                                 border, padding))
+                        frame.Add(sprite);
 
                     positionTop = viewport.Y + lineHeight + padding * 2;
                 }
 
                 // Content
                 var limit = (int)Math.Round((positionBottom - positionTop) / lineHeight);
+                displayObject.ListingTick();
+                if (displayObject.NeedListing())
+                {
+                    displayObject.Listing(limit);
+                }
+
                 foreach (var line in displayObject.GetLines(limit))
                 {
-                    if (line.Value.Count == 0)
+                    if (line.Count == 0)
                     {
                         positionTop += lineHeight;
                         continue;
                     }
 
-                    foreach (var sprite in line.Value)
+                    foreach (var sprite in line)
                     {
-                        var printSprite = sprite;
-                        printSprite.Type = SpriteType.TEXT;
-                        printSprite.Size = new Vector2(positionLeft, positionTop);
-                        printSprite.FontId = font;
-                        printSprite.RotationOrScale = fontSize;
-                        printSprite.Color = display.ScriptForegroundColor;
-
-                        printSprite.Position = new Vector2(positionLeft, positionTop);
-                        if (printSprite.Alignment == TextAlignment.RIGHT)
+                        var testSprite = sprite;
+                        testSprite.Size = new Vector2(positionLeft, positionTop);
+                        testSprite.FontId = font;
+                        testSprite.RotationOrScale = fontSize;
+                        testSprite.Color = display.ScriptForegroundColor;
+                        testSprite.Position = new Vector2(positionLeft, positionTop);
+                        if (testSprite.Alignment == TextAlignment.RIGHT)
                         {
-                            printSprite.Position = new Vector2(positionRight, positionTop);
+                            testSprite.Position = new Vector2(positionRight, positionTop);
+                        }
+                        else if (testSprite.Alignment == TextAlignment.CENTER)
+                        {
+                            testSprite.Position = new Vector2(positionCenter, positionTop);
                         }
 
-                        frame.Add(printSprite);
+                        frame.Add(testSprite);
                     }
 
                     positionTop += lineHeight;
@@ -781,6 +677,7 @@ namespace IngameScript
                 // Draw
                 display.ContentType = ContentType.SCRIPT;
                 display.Script = "";
+                display.WriteText(displayObject.LinesToString());
                 frame.Dispose();
             }
         }
@@ -827,6 +724,24 @@ namespace IngameScript
             display.AddImageToSelection("LCD_Economy_Graph_2");
         }
 
+        private ConfigObject GetDisplayConfig(IMyTerminalBlock block)
+        {
+            var global = new ConfigObject(ConfigsSections.DisplayConfig, new Dictionary<string, string>
+            {
+                { "title", "" },
+                { "font", _globalConfig.Get("DC:font", "Debug") },
+                { "fontSize", _globalConfig.Get("DC:fontSize", "0.8") },
+                { "lineHeight", _globalConfig.Get("DC:lineHeight", "32") },
+                { "padding", _globalConfig.Get("DC:padding", "10") },
+                { "border", _globalConfig.Get("DC:border", "1") },
+                { "listingDelay", _globalConfig.Get("DC:listingDelay", "10") },
+                { "language", _globalConfig.Get("DC:language", "localization") },
+            });
+            var config = ConfigObject.Parse(ConfigsSections.DisplayConfig, block.CustomData);
+            return ConfigsHelper.Merge(ConfigsSections.DisplayConfig,
+                new List<ConfigObject> { global, config });
+        }
+
         private void CheckGlobalConfig()
         {
             var configDefault = new ConfigObject(ConfigsSections.GlobalConfig, new Dictionary<string, string>
@@ -834,6 +749,13 @@ namespace IngameScript
                 { "Tag", "[Base]" },
                 { "Ignore", "[!CBM]" },
                 { "SD:BaseContainersMaxVolume", "90%" },
+                { "DC:font", "Debug" },
+                { "DC:fontSize", "0.8" },
+                { "DC:lineHeight", "32" },
+                { "DC:padding", "10" },
+                { "DC:border", "1" },
+                { "DC:listingDelay", "5" },
+                { "DC:language", "localization" }
             });
             var configCurrent = ConfigObject.Parse(ConfigsSections.GlobalConfig, Me.CustomData);
             var configNew = ConfigsHelper.Merge(ConfigsSections.GlobalConfig,
@@ -841,19 +763,6 @@ namespace IngameScript
 
             _globalConfig = configNew;
             Me.CustomData = ConfigsHelper.ToCustomData(configNew, ";Crowigor's Base Manager");
-        }
-
-        private string AmountToString(MyFixedPoint amount)
-        {
-            double value = (double)amount;
-
-            if (value >= 1000000)
-                return (value / 1000000.0).ToString("0.#") + "M";
-
-            if (value >= 1000)
-                return (value / 1000.0).ToString("0.#") + "K";
-
-            return value.ToString("0");
         }
 
         #endregion;

@@ -85,7 +85,7 @@ namespace IngameScript
         {
             public readonly string Selector;
             public readonly string Name;
-            private readonly string Localization;
+            public readonly string Localization;
             public MyItemType Type;
             public readonly List<string> Aliases;
             public readonly Dictionary<MyDefinitionId, MyFixedPoint> Blueprints;
@@ -118,6 +118,14 @@ namespace IngameScript
             public bool IsCrafteble()
             {
                 return (Blueprints.Count > 0);
+            }
+
+            public string Title(string language = "local")
+            {
+                if (language.ToLower() == "source")
+                    return Name;
+
+                return Localization;
             }
 
             public void ClearAmount()
@@ -160,6 +168,44 @@ namespace IngameScript
                 Clear();
             }
 
+            public override string ToString()
+            {
+                var result = ValueToString(Exist);
+                if (AssemblingQuota > 0 || DisassemblingQuota > 0)
+                {
+                    result += "/";
+                    MyFixedPoint quota = -1;
+                    if (AssemblingQuota >= 0)
+                    {
+                        quota = AssemblingQuota;
+                    }
+
+                    if (DisassemblingQuota >= 0)
+                    {
+                        if (quota >= 0 && DisassemblingQuota < quota)
+                            quota = DisassemblingQuota;
+                        else if (quota < 0)
+                            quota = DisassemblingQuota;
+                    }
+
+                    result += ValueToString(quota);
+                }
+
+                if (Assembling > 0 || Disassembling > 0)
+                {
+                    result += " (";
+                    if (Assembling > 0)
+                        result += "+" + ValueToString(Assembling);
+
+                    if (Disassembling > 0)
+                        result += "0" + ValueToString(Disassembling);
+
+                    result += ")";
+                }
+
+                return result;
+            }
+
             public void Clear()
             {
                 IsNew = true;
@@ -168,6 +214,19 @@ namespace IngameScript
                 AssemblingQuota = -1;
                 Disassembling = MyFixedPoint.Zero;
                 DisassemblingQuota = -1;
+            }
+
+            public static string ValueToString(MyFixedPoint value)
+            {
+                var result = (double)value;
+
+                if (result >= 1000000)
+                    return (result / 1000000.0).ToString("0.#") + "M";
+
+                if (result >= 1000)
+                    return (result / 1000.0).ToString("0.#") + "K";
+
+                return result.ToString("0");
             }
         }
     }

@@ -28,6 +28,7 @@ namespace IngameScript
                 GasTanks,
                 Grinders,
                 Pistons,
+                Projector,
                 Refineries,
                 Sorters,
                 Turrets,
@@ -88,6 +89,9 @@ namespace IngameScript
 
                     if (block is IMyPistonBase)
                         _storageByTypes[BlockType.Pistons].Add(block.EntityId);
+
+                    if (block is IMyProjector)
+                        _storageByTypes[BlockType.Projector].Add(block.EntityId);
 
                     if (block is IMyRefinery)
                         _storageByTypes[BlockType.Refineries].Add(block.EntityId);
