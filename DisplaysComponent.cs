@@ -81,9 +81,9 @@ namespace IngameScript
                 AddLine(BlankSprite());
             }
 
-            public void AddTextLine(string text, TextAlignment alignment = TextAlignment.LEFT)
+            public void AddTextLine(string text, TextAlignment alignment = TextAlignment.LEFT, Color? color = null)
             {
-                AddLine(TextSprite(text, alignment));
+                AddLine(TextSprite(text, alignment, color));
             }
 
             public void AddCustomTextLine(string text)
@@ -133,13 +133,15 @@ namespace IngameScript
                 return TextSprite("");
             }
 
-            public static MySprite TextSprite(string text, TextAlignment alignment = TextAlignment.LEFT)
+            public static MySprite TextSprite(string text, TextAlignment alignment = TextAlignment.LEFT,
+                Color? color = null)
             {
                 return new MySprite
                 {
                     Type = SpriteType.TEXT,
                     Data = text,
-                    Alignment = alignment
+                    Alignment = alignment,
+                    Color = color
                 };
             }
 

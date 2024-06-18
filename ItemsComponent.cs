@@ -29,11 +29,12 @@ namespace IngameScript
 
             public ItemObject GetItem(string key)
             {
+                var keyLower = key.ToLower();
                 string selector = null;
                 if (_storage.ContainsKey(key))
                     selector = key;
-                else if (_aliases.ContainsKey(key))
-                    selector = _aliases[key];
+                else if (_aliases.ContainsKey(keyLower))
+                    selector = _aliases[keyLower];
 
                 return selector == null ? null : _storage[selector];
             }
@@ -99,7 +100,7 @@ namespace IngameScript
                 Name = name;
                 Localization = localization;
                 Type = MyItemType.Parse(type);
-                Aliases = new List<string> { Selector, Name, Localization, Type.ToString() };
+                Aliases = new List<string> { Selector.ToLower(), Name.ToLower(), Localization.ToLower(), Type.ToString().ToLower() };
                 Blueprints = new Dictionary<MyDefinitionId, MyFixedPoint>();
                 if (blueprints != null)
                 {
@@ -107,7 +108,7 @@ namespace IngameScript
                     {
                         var blueprint = MyDefinitionId.Parse(entry.Key);
                         Blueprints[blueprint] = MyFixedPoint.DeserializeString(entry.Value);
-                        Aliases.Add(blueprint.ToString());
+                        Aliases.Add(blueprint.ToString().ToLower());
                     }
                 }
 

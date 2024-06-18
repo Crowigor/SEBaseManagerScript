@@ -57,15 +57,9 @@ namespace IngameScript
                 var result = new ConfigObject(section);
                 foreach (var line in lines)
                 {
-                    var content = line.Trim();
-                    string value = null;
-                    var lineParts = content.Split(new[] { '=' }, 2);
-                    var key = lineParts[0].Trim();
-
-                    if (lineParts.Length == 2)
-                        value = lineParts[1].Trim();
-
-                    result.Set(key, value);
+                    KeyValuePair<string, string> content = ConfigsHelper.ParseLine(line);
+                    if (!string.IsNullOrEmpty(content.Key))
+                        result.Set(content.Key, content.Value);
                 }
 
                 return result;
@@ -113,6 +107,22 @@ namespace IngameScript
                 }
 
                 return result;
+            }
+
+            public static KeyValuePair<string, string> ParseLine(string line)
+            {
+                var result = new KeyValuePair<string, string>(null, null);
+                var content = line.Trim();
+                if (string.IsNullOrEmpty(content))
+                    return result;
+
+                var lineParts = content.Split(new[] { '=' }, 2);
+                var key = lineParts[0].Trim();
+                string value = null;
+                if (lineParts.Length == 2)
+                    value = lineParts[1].Trim();
+
+                return new KeyValuePair<string, string>(key, value);
             }
 
             public static ConfigObject Merge(string section, List<ConfigObject> configs)

@@ -35,7 +35,10 @@ namespace IngameScript
             public const string StopDrones = "CBM:SD";
             public const string DisplayStatus = "CBM:DS";
             public const string DisplayItems = "CBM:DI";
-            public static readonly List<string> Displays = new List<string> { DisplayStatus, DisplayItems };
+            public const string DisplayLimits = "CBM:DL";
+
+            public static readonly List<string> Displays = new List<string>
+                { DisplayStatus, DisplayItems, DisplayLimits };
         }
 
         private readonly TasksManager _tasks;
@@ -589,6 +592,39 @@ namespace IngameScript
                                     }
                                 }
 
+                                if (configSection.Key == ConfigsSections.DisplayLimits && line.Contains("="))
+                                {
+                                    var content = ConfigsHelper.ParseLine(line);
+                                    if (!string.IsNullOrEmpty(content.Key))
+                                    {
+                                        var label = content.Key;
+                                        var exist = MyFixedPoint.DeserializeString("-1");
+                                        var needle = MyFixedPoint.DeserializeString(content.Value);
+
+                                        var item = _items.GetItem(content.Key);
+                                        if (item != null)
+                                        {
+                                            label = item.Title(language);
+                                            exist = item.Amounts.Exist;
+                                        }
+
+                                        var text = ItemAmountsObject.ValueToString(exist) + "/" +
+                                                   ItemAmountsObject.ValueToString(needle);
+                                        Color? color = null;
+                                        if (exist > needle)
+                                            color = Color.Green;
+                                        else if (exist < needle)
+                                            color = Color.Red;
+
+                                        displayObject.AddLine(
+                                            DisplayObject.TextSprite(label),
+                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
+                                        );
+
+                                        continue;
+                                    }
+                                }
+
                                 displayObject.AddCustomTextLine(line);
                             }
                         }
@@ -653,22 +689,26 @@ namespace IngameScript
 
                     foreach (var sprite in line)
                     {
-                        var testSprite = sprite;
-                        testSprite.Size = new Vector2(positionLeft, positionTop);
-                        testSprite.FontId = font;
-                        testSprite.RotationOrScale = fontSize;
-                        testSprite.Color = display.ScriptForegroundColor;
-                        testSprite.Position = new Vector2(positionLeft, positionTop);
-                        if (testSprite.Alignment == TextAlignment.RIGHT)
+                        var textSprite = sprite;
+                        textSprite.Size = new Vector2(positionLeft, positionTop);
+                        textSprite.FontId = font;
+                        textSprite.RotationOrScale = fontSize;
+                        if (textSprite.Color == null)
                         {
-                            testSprite.Position = new Vector2(positionRight, positionTop);
-                        }
-                        else if (testSprite.Alignment == TextAlignment.CENTER)
-                        {
-                            testSprite.Position = new Vector2(positionCenter, positionTop);
+                            textSprite.Color = display.ScriptForegroundColor;
                         }
 
-                        frame.Add(testSprite);
+                        textSprite.Position = new Vector2(positionLeft, positionTop);
+                        if (textSprite.Alignment == TextAlignment.RIGHT)
+                        {
+                            textSprite.Position = new Vector2(positionRight, positionTop);
+                        }
+                        else if (textSprite.Alignment == TextAlignment.CENTER)
+                        {
+                            textSprite.Position = new Vector2(positionCenter, positionTop);
+                        }
+
+                        frame.Add(textSprite);
                     }
 
                     positionTop += lineHeight;
