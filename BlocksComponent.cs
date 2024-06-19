@@ -18,6 +18,7 @@ namespace IngameScript
             {
                 All,
                 Assemblers,
+                Batteries,
                 Collectors,
                 Connectors,
                 Containers,
@@ -26,14 +27,15 @@ namespace IngameScript
                 Drills,
                 GasGenerators,
                 GasTanks,
+                GravityGenerators,
                 Grinders,
                 Pistons,
                 Projector,
                 Refineries,
+                Rotors,
                 Sorters,
                 Turrets,
-                Welders,
-                BuildAndRepair,
+                Welders
             }
 
             public BlocksManager(IMyGridTerminalSystem grid, string tag, string ignore)
@@ -59,6 +61,9 @@ namespace IngameScript
 
                     if (block is IMyAssembler)
                         _storageByTypes[BlockType.Assemblers].Add(block.EntityId);
+                    
+                    if (block is IMyBatteryBlock)
+                        _storageByTypes[BlockType.Batteries].Add(block.EntityId);
 
                     if (block is IMyCollector)
                         _storageByTypes[BlockType.Collectors].Add(block.EntityId);
@@ -82,7 +87,10 @@ namespace IngameScript
                         _storageByTypes[BlockType.GasGenerators].Add(block.EntityId);
 
                     if (block is IMyGasTank)
-                        _storageByTypes[BlockType.GasTanks].Add(block.EntityId);
+                        _storageByTypes[BlockType.GasTanks].Add(block.EntityId); 
+                    
+                    if (block is IMyGravityGenerator)
+                        _storageByTypes[BlockType.GravityGenerators].Add(block.EntityId);
 
                     if (block is IMyShipGrinder)
                         _storageByTypes[BlockType.Grinders].Add(block.EntityId);
@@ -95,6 +103,9 @@ namespace IngameScript
 
                     if (block is IMyRefinery)
                         _storageByTypes[BlockType.Refineries].Add(block.EntityId);
+                    
+                    if (block is IMyMotorStator)
+                        _storageByTypes[BlockType.Rotors].Add(block.EntityId);
 
                     if (block is IMyConveyorSorter)
                         _storageByTypes[BlockType.Sorters].Add(block.EntityId);
@@ -102,20 +113,8 @@ namespace IngameScript
                     if (block is IMyLargeConveyorTurretBase)
                         _storageByTypes[BlockType.Turrets].Add(block.EntityId);
 
-                    if (block is IMyShipWelder)
-                    {
-                        List<ITerminalProperty> properties = new List<ITerminalProperty>();
-                        block.GetProperties(properties);
-                        bool isBuildAndRepair = properties.Any(p => p.Id.Contains("BuildAndRepair"));
-                        if (isBuildAndRepair)
-                        {
-                            _storageByTypes[BlockType.BuildAndRepair].Add(block.EntityId);
-                        }
-                        else
-                        {
-                            _storageByTypes[BlockType.Welders].Add(block.EntityId);
-                        }
-                    }
+                    if (block is IMyShipWelder) 
+                        _storageByTypes[BlockType.Welders].Add(block.EntityId);
                 }
             }
 
