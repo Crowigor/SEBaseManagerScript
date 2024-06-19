@@ -6,10 +6,10 @@ Tags for custom data
 [CBM:GC] - Global Config
 [CBM:DC] - Display Config
 [CBM:IM] - Inventory Manager
+[CBM:SC] - Special Containers
 [CBM:IA] - Items Assembling
 [CBM:ID] - Items Disassembling
 [CBM:SD] - Stop Drones
-[CBM:SD] - Stop Drones
 [CBM:DS] - Display Script Status
 [CBM:DI] - Display Items Count
-[CBM:DL] - Display Items Whits
+[CBM:DL] - Display Items Limits

@@ -1,6 +1,5 @@
 ﻿using Sandbox.ModAPI.Ingame;
 using System.Collections.Generic;
-using System.Linq;
 using VRage;
 using VRage.Game.ModAPI.Ingame;
 
@@ -79,6 +78,38 @@ namespace IngameScript
                 return findItem?.Amount ?? MyFixedPoint.Zero;
             }
 
+            public static MyFixedPoint? TransferFromInventories(MyItemType type, List<IMyInventory> inventories,
+                IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
+            {
+                var zero = new MyFixedPoint();
+                if (amount == zero || inventories.Count == 0)
+                    return null;
+
+                var current = destinationInventory.GetItemAmount(type);
+                amount -= current;
+
+                if (amount <= zero)
+                    return amount;
+
+                foreach (var sourceInventory in inventories)
+                {
+                    var sourceInventoryItems = new List<MyInventoryItem>();
+                    sourceInventory.GetItems(sourceInventoryItems, b => b.Type == type);
+
+                    foreach (var inventoryItem in sourceInventoryItems)
+                    {
+                        var transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
+                        if (transfer != null)
+                            amount = (MyFixedPoint)transfer;
+
+                        if (amount <= zero)
+                            return amount;
+                    }
+                }
+
+                return amount;
+            }
+
             public static MyFixedPoint? TransferFromBlocks(MyItemType type, List<IMyTerminalBlock> blocks,
                 IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
             {
@@ -107,9 +138,9 @@ namespace IngameScript
                         var sourceInventoryItems = new List<MyInventoryItem>();
                         sourceInventory.GetItems(sourceInventoryItems, b => b.Type == type);
 
-                        foreach (var transfer in sourceInventoryItems.Select(inventoryItem =>
-                                     TransferItem(inventoryItem, sourceInventory, destinationInventory, amount)))
+                        foreach (var inventoryItem in sourceInventoryItems)
                         {
+                            var transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
                             if (transfer != null)
                                 amount = (MyFixedPoint)transfer;
 

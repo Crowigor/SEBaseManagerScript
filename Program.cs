@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Microsoft.IO;
 using VRage;
 using VRage.Collections;
 using VRage.Game;
@@ -30,6 +31,7 @@ namespace IngameScript
             public const string GlobalConfig = "CBM:GC";
             public const string DisplayConfig = "CBM:DC";
             public const string InventoryManager = "CBM:IM";
+            public const string SpecialContainer = "CBM:SC";
             public const string ItemsAssembling = "CBM:IA";
             public const string ItemsDisassembling = "CBM:ID";
             public const string StopDrones = "CBM:SD";
@@ -309,6 +311,40 @@ namespace IngameScript
             }
 
             _items.TransferFromInventories(inventories);
+
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Containers))
+            {
+                if (!terminalBlock.IsFunctional || !terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
+                    continue;
+
+                var container = terminalBlock as IMyCargoContainer;
+                if (container == null)
+                    continue;
+
+                var config = ConfigObject.Parse(ConfigsSections.SpecialContainer, container.CustomData);
+                if (config == null)
+                    continue;
+
+                var inventory = container.GetInventory(0);
+
+                foreach (var entry in config.Data)
+                {
+                    var item = _items.GetItem(entry.Key);
+                    if (item == null)
+                        continue;
+
+                    var needle = MyFixedPoint.DeserializeString(entry.Value);
+                    if (needle == 0)
+                        continue;
+
+                    var current = inventory.GetItemAmount(item.Type);
+                    if (current < needle)
+                    {
+                        MyFixedPoint quantity = needle - current;
+                        InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), inventory, quantity);
+                    }
+                }
+            }
         }
 
         private void TaskAssemblersManager()
@@ -417,10 +453,12 @@ namespace IngameScript
                         if (item == null || item.Blueprints.Count <= 0)
                             continue;
 
-                        foreach (var quantity in from blueprint in item.Blueprints
-                                 where assembler.CanUseBlueprint(blueprint.Key)
-                                 select queueItem.Amount * blueprint.Value)
+                        foreach (var blueprint in item.Blueprints)
                         {
+                            if (!assembler.CanUseBlueprint(blueprint.Key))
+                                continue;
+
+                            MyFixedPoint quantity = queueItem.Amount * blueprint.Value;
                             InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(),
                                 assembler.GetInventory(1), quantity);
                         }
@@ -486,19 +524,17 @@ namespace IngameScript
                     {
                         float current = 0;
                         float total = 0;
-
-                        foreach (var inventory in from IMyCargoContainer container in
-                                     _blocks.GetBlocks(BlocksManager.BlockType.Containers)
-                                 where container.CustomName.Contains(baseContainersName)
-                                 select container.GetInventory(0))
+                        foreach (IMyCargoContainer container in _blocks.GetBlocks(BlocksManager.BlockType.Containers))
                         {
+                            if (!container.CustomName.Contains(baseContainersName)) continue;
+                            IMyInventory inventory = container.GetInventory(0);
+
                             current += (float)inventory.CurrentVolume;
                             total += (float)inventory.MaxVolume;
                         }
 
                         var maxConfig = config.Get("BaseContainersMaxVolume",
                             _globalConfig.Get("SD:BaseContainersMaxVolume", "90%"));
-
                         var percent = maxConfig.Contains("%");
                         var max = (float)MyFixedPoint.DeserializeString(maxConfig.Replace("%", ""));
                         if (percent)
