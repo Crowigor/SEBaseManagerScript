@@ -616,10 +616,8 @@ namespace IngameScript
                                         else if (exist < needle)
                                             color = Color.Red;
 
-                                        displayObject.AddLine(
-                                            DisplayObject.TextSprite(label),
-                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
-                                        );
+                                        displayObject.AddLine(DisplayObject.TextSprite(label),
+                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color));
 
                                         continue;
                                     }

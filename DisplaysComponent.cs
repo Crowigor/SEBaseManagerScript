@@ -23,7 +23,7 @@ namespace IngameScript
             {
                 Selector = selector;
                 UpdateDelay = updateDelay;
-                _updateCurrentTick = 0;
+                _updateCurrentTick = updateDelay;
                 ListingDelay = listingDelay;
                 _listingCurrentTick = 0;
                 Lines = new List<List<MySprite>>();
