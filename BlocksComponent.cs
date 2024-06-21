@@ -17,6 +17,7 @@ namespace IngameScript
 
             public enum BlockType
             {
+                AirVent,
                 Assembler,
                 Battery,
                 Collector,
@@ -41,7 +42,8 @@ namespace IngameScript
                 Welder
             }
 
-            public BlocksManager(IMyGridTerminalSystem grid, string tag, string ignore, List<BlockType> types = null)
+            public BlocksManager(IMyGridTerminalSystem grid, string tag, string ignoreTag,
+                List<BlockType> types = null, List<BlockType> ignoreTypes = null)
             {
                 _storage = new Dictionary<long, IMyTerminalBlock>();
                 _storageByTypes = new Dictionary<BlockType, List<long>>();
@@ -51,7 +53,10 @@ namespace IngameScript
                     if (type == BlockType.TerminalBlock)
                         continue;
 
-                    if (types != null && !types.Contains(type))
+                    if (types != null && types.Count > 0 && !types.Contains(type))
+                        continue;
+
+                    if (ignoreTypes != null && ignoreTypes.Count > 0 && ignoreTypes.Contains(type))
                         continue;
 
                     _storageByTypes[type] = new List<long>();
@@ -63,7 +68,8 @@ namespace IngameScript
 
                 foreach (var block in blocks)
                 {
-                    if (!block.IsFunctional || block.CustomName.Contains(ignore) || block.CustomData.Contains(ignore))
+                    if (!block.IsFunctional || block.CustomName.Contains(ignoreTag) ||
+                        block.CustomData.Contains(ignoreTag))
                         continue;
 
                     var addToStorage = false;
@@ -117,6 +123,8 @@ namespace IngameScript
             {
                 var result = new List<BlockType>();
 
+                if (block is IMyAirVent)
+                    result.Add(BlockType.AirVent);
                 if (block is IMyAssembler)
                     result.Add(BlockType.Assembler);
                 if (block is IMyBatteryBlock)

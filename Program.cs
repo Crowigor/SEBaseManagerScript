@@ -106,30 +106,18 @@ namespace IngameScript
         {
             ConfigureMeDisplay();
             CheckGlobalConfig();
-            var blockTypes = new List<BlocksManager.BlockType>
+            var ignoreTypes = new List<BlocksManager.BlockType>
             {
-                BlocksManager.BlockType.Assembler,
+                BlocksManager.BlockType.AirVent,
                 BlocksManager.BlockType.Battery,
-                BlocksManager.BlockType.Collector,
-                BlocksManager.BlockType.Connector,
-                BlocksManager.BlockType.Container,
-                BlocksManager.BlockType.CryoChamber,
-                BlocksManager.BlockType.Display,
-                BlocksManager.BlockType.Drill,
-                BlocksManager.BlockType.GasGenerator,
                 BlocksManager.BlockType.GasPowerProducer,
-                BlocksManager.BlockType.GasTank,
-                BlocksManager.BlockType.Grinder,
+                BlocksManager.BlockType.GravityGenerator,
+                BlocksManager.BlockType.Piston,
                 BlocksManager.BlockType.Projector,
-                BlocksManager.BlockType.Reactor,
-                BlocksManager.BlockType.Refinery,
-                BlocksManager.BlockType.Sorter,
-                BlocksManager.BlockType.TerminalBlock,
-                BlocksManager.BlockType.Turret,
-                BlocksManager.BlockType.Welder
+                BlocksManager.BlockType.Rotor,
             };
             _blocks = new BlocksManager(GridTerminalSystem, _globalConfig.Get("Tag"), _globalConfig.Get("Ignore"),
-                blockTypes);
+                null, ignoreTypes);
 
             if (_items == null)
                 _items = new ItemsManager();
@@ -522,6 +510,18 @@ namespace IngameScript
             else
                 _messages["Stop Drones"].Clear();
 
+            var itemsCollectingBlockTypes = new List<BlocksManager.BlockType>
+            {
+                BlocksManager.BlockType.Collector,
+                BlocksManager.BlockType.Connector,
+                BlocksManager.BlockType.Container,
+                BlocksManager.BlockType.CryoChamber,
+                BlocksManager.BlockType.Drill,
+                BlocksManager.BlockType.Grinder,
+                BlocksManager.BlockType.Sorter,
+                BlocksManager.BlockType.Welder
+            };
+
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
                 if (!terminalBlock.IsWorking ||
@@ -532,10 +532,10 @@ namespace IngameScript
                 if (connector.Status != MyShipConnectorStatus.Connected)
                     continue;
 
-                var otherConnector = connector.OtherConnector;
-                var otherBlocks = new List<IMyTerminalBlock>();
-                GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(otherBlocks,
-                    block => block.CubeGrid == otherConnector.CubeGrid);
+                var connectedConnector = connector.OtherConnector;
+                var connectedBlocks = new List<IMyTerminalBlock>();
+                GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(connectedBlocks,
+                    block => block.CubeGrid == connectedConnector.CubeGrid);
 
                 // Stop drones
                 if (connector.CustomData.Contains(ConfigsSections.StopDrones))
@@ -584,7 +584,7 @@ namespace IngameScript
                             blockActive = false;
 
                         var blocksFound = false;
-                        foreach (var block in otherBlocks)
+                        foreach (var block in connectedBlocks)
                         {
                             if (!block.CustomName.Contains(droneBlocksName))
                                 continue;
@@ -604,6 +604,42 @@ namespace IngameScript
                 // Items Collecting
                 if (connector.CustomData.Contains(ConfigsSections.ItemsCollecting))
                 {
+                    var destinationInventory = connector.GetInventory(0);
+                    _items.TransferFromInventory(destinationInventory);
+
+                    var config = ConfigObject.Parse(ConfigsSections.ItemsCollecting, connector.CustomData);
+                    var collectTypes = new List<MyItemType>();
+                    if (config != null && config.Data.Keys.Count > 0)
+                    {
+                        foreach (var itemKey in config.Data.Keys)
+                        {
+                            var item = _items.GetItem(itemKey);
+                            if (item == null)
+                                continue;
+                            collectTypes.Add(item.Type);
+                        }
+                    }
+
+                    foreach (var block in connectedBlocks)
+                    {
+                        if (!BlocksManager.GetBlockTypes(block).Intersect(itemsCollectingBlockTypes).Any())
+                            continue;
+
+                        for (var i = 0; i < block.InventoryCount; i++)
+                        {
+                            var sourceInventory = block.GetInventory(i);
+                            var sourceItems = new List<MyInventoryItem>();
+                            sourceInventory.GetItems(sourceItems);
+                            foreach (var item in sourceItems)
+                            {
+                                if (collectTypes.Count == 0 || collectTypes.Contains(item.Type))
+                                {
+                                    InventoryHelper.TransferItem(item, sourceInventory, destinationInventory);
+                                    _items.TransferFromInventory(destinationInventory);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
