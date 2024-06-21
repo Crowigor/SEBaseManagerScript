@@ -34,6 +34,7 @@ namespace IngameScript
             public const string SpecialContainer = "CBM:SC";
             public const string ItemsAssembling = "CBM:IA";
             public const string ItemsDisassembling = "CBM:ID";
+            public const string ItemsCollecting = "CBM:IC";
             public const string StopDrones = "CBM:SD";
             public const string DisplayStatus = "CBM:DS";
             public const string DisplayItems = "CBM:DI";
@@ -41,7 +42,15 @@ namespace IngameScript
 
             public static readonly List<string> Displays = new List<string>
                 { DisplayStatus, DisplayItems, DisplayLimits };
+
+            public static readonly List<string> Connectors = new List<string>
+                { ItemsCollecting, StopDrones };
         }
+
+        private readonly Dictionary<string, string> _legacyReplace = new Dictionary<string, string>
+        {
+            { "DronBlocksName", "DroneBlocksName" }
+        };
 
         private readonly TasksManager _tasks;
         private BlocksManager _blocks;
@@ -69,6 +78,16 @@ namespace IngameScript
             // Run Initialization
             TaskInitialization();
 
+            // Legacy replace
+            foreach (var block in _blocks.GetBlocks())
+            {
+                foreach (var replace in _legacyReplace)
+                {
+                    if (block.CustomData.Contains(replace.Key))
+                        block.CustomData = block.CustomData.Replace(replace.Key, replace.Value);
+                }
+            }
+
             // Set update rate
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
@@ -87,7 +106,30 @@ namespace IngameScript
         {
             ConfigureMeDisplay();
             CheckGlobalConfig();
-            _blocks = new BlocksManager(GridTerminalSystem, _globalConfig.Get("Tag"), _globalConfig.Get("Ignore"));
+            var blockTypes = new List<BlocksManager.BlockType>
+            {
+                BlocksManager.BlockType.Assembler,
+                BlocksManager.BlockType.Battery,
+                BlocksManager.BlockType.Collector,
+                BlocksManager.BlockType.Connector,
+                BlocksManager.BlockType.Container,
+                BlocksManager.BlockType.CryoChamber,
+                BlocksManager.BlockType.Display,
+                BlocksManager.BlockType.Drill,
+                BlocksManager.BlockType.GasGenerator,
+                BlocksManager.BlockType.GasPowerProducer,
+                BlocksManager.BlockType.GasTank,
+                BlocksManager.BlockType.Grinder,
+                BlocksManager.BlockType.Projector,
+                BlocksManager.BlockType.Reactor,
+                BlocksManager.BlockType.Refinery,
+                BlocksManager.BlockType.Sorter,
+                BlocksManager.BlockType.TerminalBlock,
+                BlocksManager.BlockType.Turret,
+                BlocksManager.BlockType.Welder
+            };
+            _blocks = new BlocksManager(GridTerminalSystem, _globalConfig.Get("Tag"), _globalConfig.Get("Ignore"),
+                blockTypes);
 
             if (_items == null)
                 _items = new ItemsManager();
@@ -103,7 +145,7 @@ namespace IngameScript
                 _messages.Clear();
 
             // Add inventories to items
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTanks))
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTank))
             {
                 if (!terminalBlock.CustomData.Contains(ConfigsSections.InventoryManager))
                     continue;
@@ -120,7 +162,7 @@ namespace IngameScript
                 }
             }
 
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Containers))
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Container))
             {
                 if (!terminalBlock.CustomData.Contains(ConfigsSections.InventoryManager))
                     continue;
@@ -139,7 +181,7 @@ namespace IngameScript
 
             // Update displays
             var displays = new Dictionary<long, DisplayObject>();
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Displays))
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Display))
             {
                 if (!ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
                     continue;
@@ -279,13 +321,53 @@ namespace IngameScript
 
         private void TaskInventoryManager()
         {
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Container))
+            {
+                if (!terminalBlock.IsFunctional || !terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
+                    continue;
+
+                var container = terminalBlock as IMyCargoContainer;
+                if (container == null)
+                    continue;
+
+                var config = ConfigObject.Parse(ConfigsSections.SpecialContainer, container.CustomData);
+                if (config == null)
+                    continue;
+
+                var inventory = container.GetInventory(0);
+                _items.TransferFromInventory(inventory);
+
+                foreach (var entry in config.Data)
+                {
+                    var item = _items.GetItem(entry.Key);
+                    if (item == null)
+                        continue;
+
+                    var needle = MyFixedPoint.DeserializeString(entry.Value);
+                    if (needle == 0)
+                        continue;
+
+                    var current = inventory.GetItemAmount(item.Type);
+                    if (current >= needle)
+                        continue;
+
+                    var quantity = needle - current;
+                    InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), inventory, quantity);
+                }
+            }
+
             var inventories = new List<IMyInventory>();
             foreach (var terminalBlock in _blocks.GetBlocks())
             {
-                if (!terminalBlock.IsFunctional || terminalBlock is IMyLargeConveyorTurretBase)
+                if (!terminalBlock.IsFunctional || terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
                     continue;
 
-                if (terminalBlock is IMyGasGenerator)
+                var blockType = BlocksManager.GetBlockTypes(terminalBlock);
+                if (blockType.Contains(BlocksManager.BlockType.Turret) ||
+                    blockType.Contains(BlocksManager.BlockType.Reactor))
+                    continue;
+
+                if (blockType.Contains(BlocksManager.BlockType.GasGenerator))
                 {
                     var inventory = terminalBlock.GetInventory(0);
                     var items = new List<MyInventoryItem>();
@@ -311,45 +393,11 @@ namespace IngameScript
             }
 
             _items.TransferFromInventories(inventories);
-
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Containers))
-            {
-                if (!terminalBlock.IsFunctional || !terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
-                    continue;
-
-                var container = terminalBlock as IMyCargoContainer;
-                if (container == null)
-                    continue;
-
-                var config = ConfigObject.Parse(ConfigsSections.SpecialContainer, container.CustomData);
-                if (config == null)
-                    continue;
-
-                var inventory = container.GetInventory(0);
-
-                foreach (var entry in config.Data)
-                {
-                    var item = _items.GetItem(entry.Key);
-                    if (item == null)
-                        continue;
-
-                    var needle = MyFixedPoint.DeserializeString(entry.Value);
-                    if (needle == 0)
-                        continue;
-
-                    var current = inventory.GetItemAmount(item.Type);
-                    if (current < needle)
-                    {
-                        MyFixedPoint quantity = needle - current;
-                        InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), inventory, quantity);
-                    }
-                }
-            }
         }
 
         private void TaskAssemblersManager()
         {
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Assemblers))
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Assembler))
             {
                 if (!terminalBlock.IsWorking)
                     continue;
@@ -474,19 +522,24 @@ namespace IngameScript
             else
                 _messages["Stop Drones"].Clear();
 
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connectors))
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
-                if (!terminalBlock.IsWorking)
-                    return;
+                if (!terminalBlock.IsWorking ||
+                    !ConfigsSections.Connectors.Any(key => terminalBlock.CustomData.Contains(key)))
+                    continue;
 
                 var connector = (IMyShipConnector)terminalBlock;
+                if (connector.Status != MyShipConnectorStatus.Connected)
+                    continue;
+
+                var otherConnector = connector.OtherConnector;
+                var otherBlocks = new List<IMyTerminalBlock>();
+                GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(otherBlocks,
+                    block => block.CubeGrid == otherConnector.CubeGrid);
 
                 // Stop drones
                 if (connector.CustomData.Contains(ConfigsSections.StopDrones))
                 {
-                    // Legacy replacer
-                    connector.CustomData = connector.CustomData.Replace("DronBlocksName", "DroneBlocksName");
-
                     var config = ConfigObject.Parse(ConfigsSections.StopDrones, connector.CustomData);
                     var droneBlocksName = config.Get("DroneBlocksName");
                     var baseContainersName = config.Get("BaseContainersName");
@@ -501,33 +554,17 @@ namespace IngameScript
                     {
                         _messages["Stop Drones"].Add(connector.CustomName + ":");
                         _messages["Stop Drones"].Add(error);
-                        continue;
                     }
-
-                    if (connector.Status != MyShipConnectorStatus.Connected)
-                        continue;
-
-                    var otherConnector = connector.OtherConnector;
-                    var blocks = new List<IMyTerminalBlock>();
-                    GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks,
-                        block => block.CubeGrid == otherConnector.CubeGrid &&
-                                 block.CustomName.Contains(droneBlocksName));
-                    if (blocks.Count == 0)
+                    else
                     {
-                        _messages["Stop Drones"].Add(connector.CustomName + ":");
-                        _messages["Stop Drones"].Add("Can't find drones blocks `" + droneBlocksName + "`");
-                        continue;
-                    }
-
-                    var blockActive = true;
-                    if (baseContainersName != null)
-                    {
+                        var blockActive = true;
                         float current = 0;
                         float total = 0;
-                        foreach (IMyCargoContainer container in _blocks.GetBlocks(BlocksManager.BlockType.Containers))
+                        foreach (var container in _blocks.GetBlocks(BlocksManager.BlockType.Container))
                         {
-                            if (!container.CustomName.Contains(baseContainersName)) continue;
-                            IMyInventory inventory = container.GetInventory(0);
+                            if (!container.CustomName.Contains(baseContainersName))
+                                continue;
+                            var inventory = container.GetInventory(0);
 
                             current += (float)inventory.CurrentVolume;
                             total += (float)inventory.MaxVolume;
@@ -545,12 +582,28 @@ namespace IngameScript
                         }
                         else if (current >= total)
                             blockActive = false;
-                    }
 
-                    foreach (var block in blocks)
-                    {
-                        block.ApplyAction(blockActive ? "OnOff_On" : "OnOff_Off");
+                        var blocksFound = false;
+                        foreach (var block in otherBlocks)
+                        {
+                            if (!block.CustomName.Contains(droneBlocksName))
+                                continue;
+
+                            block.ApplyAction(blockActive ? "OnOff_On" : "OnOff_Off");
+                            blocksFound = true;
+                        }
+
+                        if (!blocksFound)
+                        {
+                            _messages["Stop Drones"].Add(connector.CustomName + ":");
+                            _messages["Stop Drones"].Add("Can't find drones blocks `" + droneBlocksName + "`");
+                        }
                     }
+                }
+
+                // Items Collecting
+                if (connector.CustomData.Contains(ConfigsSections.ItemsCollecting))
+                {
                 }
             }
         }
@@ -559,7 +612,7 @@ namespace IngameScript
         {
             foreach (var selector in _displays.Keys.ToList())
             {
-                var terminalBlock = _blocks.GetBlock(selector, BlocksManager.BlockType.Displays);
+                var terminalBlock = _blocks.GetBlock(selector, BlocksManager.BlockType.Display);
 
                 if (terminalBlock == null || !terminalBlock.IsWorking ||
                     !ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
