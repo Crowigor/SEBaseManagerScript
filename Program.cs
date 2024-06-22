@@ -1,23 +1,10 @@
-﻿using Sandbox.Game;
-using Sandbox.Game.EntityComponents;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using SpaceEngineers.Game.ModAPI.Ingame;
+﻿using Sandbox.ModAPI.Ingame;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
-using Microsoft.IO;
 using VRage;
-using VRage.Collections;
-using VRage.Game;
-using VRage.Game.Components;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
 
 namespace IngameScript
@@ -34,6 +21,7 @@ namespace IngameScript
             public const string SpecialContainer = "CBM:SC";
             public const string ItemsAssembling = "CBM:IA";
             public const string ItemsDisassembling = "CBM:ID";
+            public const string RefineryManager = "CBM:RM";
             public const string ItemsCollecting = "CBM:IC";
             public const string StopDrones = "CBM:SD";
             public const string DisplayStatus = "CBM:DS";
@@ -72,6 +60,7 @@ namespace IngameScript
             _tasks.Add("Inventory Manager", TaskInventoryManager, 10);
             _tasks.Add("Assemblers Manager", TaskAssemblersManager, 5, true, true);
             _tasks.Add("Connectors Manager", TaskConnectorsManager, 6);
+            _tasks.Add("Refineries Manager", TaskRefineriesManager, 7);
             _tasks.Add("Displays Manager", TaskDisplaysManager, 1, true, true);
             _tasks.Add("Display Status", TaskDisplayStatus, 1, false);
 
@@ -640,6 +629,36 @@ namespace IngameScript
                             }
                         }
                     }
+                }
+            }
+        }
+
+        private void TaskRefineriesManager()
+        {
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Refinery))
+            {
+                if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
+                    continue;
+
+                var refinery = terminalBlock as IMyRefinery;
+                if (refinery == null)
+                    continue;
+
+                var config = ConfigObject.Parse(ConfigsSections.RefineryManager, refinery.CustomData);
+                if (config == null || config.Data.Keys.Count == 0)
+                    continue;
+
+                var destinationInventory = refinery.GetInventory(0);
+                _items.TransferFromInventory(destinationInventory);
+                foreach (var key in config.Data.Keys)
+                {
+                    var item = _items.GetItem(key);
+                    if (item == null)
+                        continue;
+
+                    InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), destinationInventory);
+                    if (destinationInventory.IsFull)
+                        break;
                 }
             }
         }

@@ -9,7 +9,9 @@ Tags for custom data
 [CBM:SC] - Special Containers
 [CBM:IA] - Items Assembling
 [CBM:ID] - Items Disassembling
+[CBM:IS] - Items Collecting
 [CBM:SD] - Stop Drones
+[CBM:RM] - Refinery Manager
 [CBM:DS] - Display Script Status
 [CBM:DI] - Display Items Count
 [CBM:DL] - Display Items Limits

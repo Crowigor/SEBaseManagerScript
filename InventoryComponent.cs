@@ -79,7 +79,7 @@ namespace IngameScript
             }
 
             public static MyFixedPoint? TransferFromInventories(MyItemType type, List<IMyInventory> inventories,
-                IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
+                IMyInventory destinationInventory, MyFixedPoint amount)
             {
                 var zero = new MyFixedPoint();
                 if (amount == zero || inventories.Count == 0)
@@ -109,20 +109,36 @@ namespace IngameScript
 
                 return amount;
             }
-
-            public static MyFixedPoint? TransferFromBlocks(MyItemType type, List<IMyTerminalBlock> blocks,
-                IMyInventory destinationInventory, MyFixedPoint amount = new MyFixedPoint())
+            
+            public static MyFixedPoint? TransferFromInventories(MyItemType type, List<IMyInventory> inventories,
+                IMyInventory destinationInventory)
             {
-                var zero = new MyFixedPoint();
-                if (amount == zero || blocks.Count == 0)
+                if (inventories.Count == 0)
                     return null;
 
-                var current = destinationInventory.GetItemAmount(type);
-                amount -= current;
+                var before = destinationInventory.GetItemAmount(type);
+                foreach (var sourceInventory in inventories)
+                {
+                    var sourceInventoryItems = new List<MyInventoryItem>();
+                    sourceInventory.GetItems(sourceInventoryItems, b => b.Type == type);
 
-                if (amount <= zero)
-                    return amount;
+                    foreach (var inventoryItem in sourceInventoryItems)
+                    {
+                       TransferItem(inventoryItem, sourceInventory, destinationInventory);
+                    }
+                }
+                var after = destinationInventory.GetItemAmount(type);
 
+                return after - before;
+            }
+
+            public static MyFixedPoint? TransferFromBlocks(MyItemType type, List<IMyTerminalBlock> blocks,
+                IMyInventory destinationInventory, MyFixedPoint amount)
+            {
+                if (blocks.Count == 0)
+                    return null;
+
+                var inventories = new List<IMyInventory>();
                 foreach (var block in blocks)
                 {
                     if (block == null)
@@ -134,23 +150,42 @@ namespace IngameScript
 
                     for (var i = 0; i < inventoryCounts; i++)
                     {
-                        var sourceInventory = block.GetInventory(i);
-                        var sourceInventoryItems = new List<MyInventoryItem>();
-                        sourceInventory.GetItems(sourceInventoryItems, b => b.Type == type);
-
-                        foreach (var inventoryItem in sourceInventoryItems)
-                        {
-                            var transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
-                            if (transfer != null)
-                                amount = (MyFixedPoint)transfer;
-
-                            if (amount <= zero)
-                                return amount;
-                        }
+                        var inventory = block.GetInventory(i);
+                        if (inventory == null)
+                            continue;
+                        inventories.Add(inventory);
                     }
                 }
 
-                return amount;
+                return TransferFromInventories(type, inventories, destinationInventory, amount);
+            }
+
+            public static MyFixedPoint? TransferFromBlocks(MyItemType type, List<IMyTerminalBlock> blocks,
+                IMyInventory destinationInventory)
+            {
+                if (blocks.Count == 0)
+                    return null;
+
+                var inventories = new List<IMyInventory>();
+                foreach (var block in blocks)
+                {
+                    if (block == null)
+                        continue;
+
+                    var inventoryCounts = block.InventoryCount;
+                    if (inventoryCounts <= 0)
+                        continue;
+
+                    for (var i = 0; i < inventoryCounts; i++)
+                    {
+                        var inventory = block.GetInventory(i);
+                        if (inventory == null)
+                            continue;
+                        inventories.Add(inventory);
+                    }
+                }
+
+                return TransferFromInventories(type, inventories, destinationInventory);
             }
         }
     }
