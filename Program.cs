@@ -57,6 +57,7 @@ namespace IngameScript
             _tasks = new TasksManager();
             _tasks.Add(TasksManager.InitializationTaskName, TaskInitialization, 20, false);
             _tasks.Add(TasksManager.CalculationTaskName, TaskCalculation, 3);
+            _tasks.Add("Cleaner", TaskCleaner, 12);
             _tasks.Add("Inventory Manager", TaskInventoryManager, 10);
             _tasks.Add("Assemblers Manager", TaskAssemblersManager, 5, true, true);
             _tasks.Add("Connectors Manager", TaskConnectorsManager, 6);
@@ -296,6 +297,20 @@ namespace IngameScript
             }
         }
 
+        private void TaskCleaner()
+        {
+            var inventories = new List<IMyInventory>();
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Assembler))
+            {
+                if (!terminalBlock.IsWorking)
+                    continue;
+
+                inventories.Add(terminalBlock.GetInventory(0));
+            }
+            
+            _items.TransferFromInventories(inventories);
+        }
+
         private void TaskInventoryManager()
         {
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Container))
@@ -380,9 +395,6 @@ namespace IngameScript
                     continue;
 
                 var assembler = (IMyAssembler)terminalBlock;
-
-                // Cleanup source inventory
-                _items.TransferFromInventory(assembler.GetInventory(0));
 
                 // Add items to quota
                 if (!assembler.IsWorking)
