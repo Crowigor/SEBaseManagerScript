@@ -12,7 +12,7 @@ namespace IngameScript
             public const string InitializationTaskName = "Initialization";
             public const string CalculationTaskName = "Calculation";
 
-            public void Add(string name, Action method, int delay = 0, bool needInitialization = true,
+            public void Add(string name, Action method, int delay = 1, bool needInitialization = true,
                 bool needCalculation = false)
             {
                 if (delay < 1)
@@ -27,10 +27,24 @@ namespace IngameScript
                 _storage.Clear();
             }
 
+            public void Restart()
+            {
+                foreach (string key in new List<string>(_storage.Keys))
+                {
+                    var task = _storage[key];
+                    task.Status = TaskObject.Statuses.Wait;
+                    task.LastStatus = TaskObject.Statuses.Null;
+                    task.CurrentTick = task.Delay;
+                    UpdateTask(task);
+                }
+                Run();
+            }
+
             public void Run()
             {
-                foreach (var task in new List<string>(_storage.Keys).Select(key => _storage[key]))
+                foreach (string key in new List<string>(_storage.Keys))
                 {
+                    var task = _storage[key];
                     if (task.Status == TaskObject.Statuses.Progress)
                         continue;
 

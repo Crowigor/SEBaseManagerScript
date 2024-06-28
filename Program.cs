@@ -84,7 +84,25 @@ namespace IngameScript
         public void Main(string argument, UpdateType updateSource)
         {
             if (string.IsNullOrEmpty(argument))
+            {
                 _tasks.Run();
+                return;
+            }
+
+            argument = argument.ToLower().Trim();
+            if (argument == "restart")
+            {
+                TaskInitialization();
+                _tasks.Restart();
+            }
+            else if (argument.StartsWith("clear_queue"))
+            {
+                ActionClearQueue(argument);
+            }
+            else if (argument.StartsWith("clear_inventories"))
+            {
+                ActionClearInventories(argument);
+            }
         }
 
         #endregion
@@ -920,6 +938,48 @@ namespace IngameScript
             }
 
             Echo(string.Join("\n", displayData.ToArray()));
+        }
+
+        #endregion
+
+        #region Actions
+
+        private void ActionClearQueue(string argument = "")
+        {
+            var blockName = argument.ToLower().Replace("clear_queue", "").Trim();
+
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Assembler))
+            {
+                if (!string.IsNullOrEmpty(argument))
+                {
+                    var customName = terminalBlock.CustomName.ToLower();
+                    if (!customName.Contains(blockName))
+                        continue;
+                }
+
+                var assembler = terminalBlock as IMyAssembler;
+                assembler?.ClearQueue();
+            }
+        }
+
+        private void ActionClearInventories(string argument = "")
+        {
+            var blockName = argument.ToLower().Replace("clear_inventories", "").Trim();
+            foreach (var terminalBlock in _blocks.GetBlocks())
+            {
+                if (!string.IsNullOrEmpty(argument))
+                {
+                    var customName = terminalBlock.CustomName.ToLower();
+                    if (!customName.Contains(blockName))
+                        continue;
+                }
+
+                for (var i = 0; i < terminalBlock.InventoryCount; i++)
+                {
+                    var inventory = terminalBlock.GetInventory(i);
+                    _items.TransferFromInventory(inventory);
+                }
+            }
         }
 
         #endregion
