@@ -104,7 +104,7 @@ namespace IngameScript
                 BlocksManager.BlockType.Piston,
                 BlocksManager.BlockType.Projector,
                 BlocksManager.BlockType.Rotor,
-                BlocksManager.BlockType.Sensor,
+                BlocksManager.BlockType.Sensor
             };
             _blocks = new BlocksManager(GridTerminalSystem, _globalConfig.Get("Tag"), _globalConfig.Get("Ignore"),
                 null, ignoreTypes);

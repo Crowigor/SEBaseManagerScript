@@ -6,4 +6,4 @@ parser
 *.csproj.user
 *.sln
 *.mdk.local.ini
-.user
+*.user
