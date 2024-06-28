@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.IO;
 using VRage;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
@@ -944,7 +943,7 @@ namespace IngameScript
                 { "padding", _globalConfig.Get("DC:padding", "10") },
                 { "border", _globalConfig.Get("DC:border", "1") },
                 { "listingDelay", _globalConfig.Get("DC:listingDelay", "10") },
-                { "language", _globalConfig.Get("DC:language", "localization") },
+                { "language", _globalConfig.Get("DC:language", "source") },
             });
             var config = ConfigObject.Parse(ConfigsSections.DisplayConfig, block.CustomData);
             return ConfigsHelper.Merge(ConfigsSections.DisplayConfig,
@@ -964,7 +963,7 @@ namespace IngameScript
                 { "DC:padding", "10" },
                 { "DC:border", "1" },
                 { "DC:listingDelay", "5" },
-                { "DC:language", "localization" }
+                { "DC:language", "source" }
             });
             var configCurrent = ConfigObject.Parse(ConfigsSections.GlobalConfig, Me.CustomData);
             var configNew = ConfigsHelper.Merge(ConfigsSections.GlobalConfig,
