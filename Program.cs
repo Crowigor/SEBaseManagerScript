@@ -616,6 +616,7 @@ namespace IngameScript
         {
             var itemsCollectingBlockTypes = new List<BlocksManager.BlockType>
             {
+                BlocksManager.BlockType.Cockpit,
                 BlocksManager.BlockType.Collector,
                 BlocksManager.BlockType.Connector,
                 BlocksManager.BlockType.Container,

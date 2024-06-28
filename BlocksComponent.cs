@@ -20,6 +20,7 @@ namespace IngameScript
                 AirVent,
                 Assembler,
                 Battery,
+                Cockpit,
                 Collector,
                 Connector,
                 Container,
@@ -129,6 +130,8 @@ namespace IngameScript
                     result.Add(BlockType.Assembler);
                 if (block is IMyBatteryBlock)
                     result.Add(BlockType.Battery);
+                if(block is IMyCockpit)
+                    result.Add(BlockType.Cockpit);
                 if (block is IMyCollector)
                     result.Add(BlockType.Collector);
                 if (block is IMyShipConnector)
