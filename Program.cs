@@ -5,6 +5,7 @@ using System.Linq;
 using VRage;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
+using VRage.Profiler;
 using VRageMath;
 
 namespace IngameScript
@@ -103,6 +104,7 @@ namespace IngameScript
                 BlocksManager.BlockType.Piston,
                 BlocksManager.BlockType.Projector,
                 BlocksManager.BlockType.Rotor,
+                BlocksManager.BlockType.SafeZone,
             };
             _blocks = new BlocksManager(GridTerminalSystem, _globalConfig.Get("Tag"), _globalConfig.Get("Ignore"),
                 null, ignoreTypes);
@@ -333,14 +335,19 @@ namespace IngameScript
             }
 
             var inventories = new List<IMyInventory>();
+            var ignoreBlockTypes = new List<BlocksManager.BlockType>
+            {
+                BlocksManager.BlockType.Turret,
+                BlocksManager.BlockType.Reactor,
+                BlocksManager.BlockType.SafeZone
+            };
             foreach (var terminalBlock in _blocks.GetBlocks())
             {
                 if (!terminalBlock.IsFunctional || terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
                     continue;
 
                 var blockType = BlocksManager.GetBlockTypes(terminalBlock);
-                if (blockType.Contains(BlocksManager.BlockType.Turret) ||
-                    blockType.Contains(BlocksManager.BlockType.Reactor))
+                if (blockType.Intersect(ignoreBlockTypes).Any())
                     continue;
 
                 if (blockType.Contains(BlocksManager.BlockType.GasGenerator))

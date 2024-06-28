@@ -37,6 +37,8 @@ namespace IngameScript
                 Reactor,
                 Refinery,
                 Rotor,
+                SafeZone,
+                Sensor,
                 Sorter,
                 TerminalBlock,
                 Turret,
@@ -146,14 +148,14 @@ namespace IngameScript
                     result.Add(BlockType.Drill);
                 if (block is IMyGasGenerator)
                     result.Add(BlockType.GasGenerator);
+                if (block is IMyPowerProducer && block is IMyGasTank)
+                    result.Add(BlockType.GasPowerProducer);
                 if (block is IMyGasTank)
                     result.Add(BlockType.GasTank);
                 if (block is IMyGravityGenerator)
                     result.Add(BlockType.GravityGenerator);
                 if (block is IMyShipGrinder)
                     result.Add(BlockType.Grinder);
-                if (block is IMyPowerProducer && block is IMyGasTank)
-                    result.Add(BlockType.GasPowerProducer);
                 if (block is IMyPistonBase)
                     result.Add(BlockType.Piston);
                 if (block is IMyProjector)
@@ -164,6 +166,10 @@ namespace IngameScript
                     result.Add(BlockType.Refinery);
                 if (block is IMyMotorStator)
                     result.Add(BlockType.Rotor);
+                if (block is IMySafeZoneBlock) 
+                    result.Add(BlockType.SafeZone);
+                if (block is IMySensorBlock)
+                    result.Add(BlockType.Sensor);
                 if (block is IMyConveyorSorter)
                     result.Add(BlockType.Sorter);
                 if (block is IMyLargeConveyorTurretBase)
