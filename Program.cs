@@ -676,7 +676,7 @@ namespace IngameScript
                 {
                     foreach (var key in config.Data.Keys)
                     {
-                        bool ignore = key.StartsWith("!");
+                        var ignore = key.StartsWith("!");
                         var itemKey = ignore ? key.TrimStart('!') : key;
                         var item = _items.GetItem(itemKey);
                         if (item == null)
@@ -691,7 +691,9 @@ namespace IngameScript
 
                 foreach (var block in connectedBlocks)
                 {
-                    if (!BlocksManager.GetBlockTypes(block).Intersect(itemsCollectingBlockTypes).Any())
+                    if (block.CustomName.Contains("!" + ConfigsSections.ItemsCollecting)
+                        || block.CustomData.Contains("!" + ConfigsSections.ItemsCollecting)
+                        || !BlocksManager.GetBlockTypes(block).Intersect(itemsCollectingBlockTypes).Any())
                         continue;
 
                     for (var i = 0; i < block.InventoryCount; i++)
