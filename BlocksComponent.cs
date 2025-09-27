@@ -111,11 +111,12 @@ namespace IngameScript
                 if (!_storageByTypes.ContainsKey(blockType) || _storageByTypes[blockType].Count == 0)
                     return result;
 
-                foreach (var EntityId in _storageByTypes[blockType])
+                foreach (var entityId in _storageByTypes[blockType])
                 {
-                    if (_storage.ContainsKey(EntityId))
+                    IMyTerminalBlock value;
+                    if (_storage.TryGetValue(entityId, out value))
                     {
-                        result.Add(_storage[EntityId]);
+                        result.Add(value);
                     }
                 }
 

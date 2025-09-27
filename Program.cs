@@ -529,15 +529,33 @@ namespace IngameScript
 
         private void TaskRefineriesManager()
         {
+            var destinations = new List<IMyRefinery>();
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Refinery))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
                     continue;
-
                 var refinery = terminalBlock as IMyRefinery;
                 if (refinery == null)
                     continue;
 
+                destinations.Add(refinery);
+            }
+
+            if (destinations.Count == 0)
+            {
+                return;
+            }
+
+            var sources = new List<IMyTerminalBlock>();
+            foreach (var terminalBlock in _blocks.GetBlocks())
+            {
+                if (terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
+                    continue;
+                sources.Add(terminalBlock);
+            }
+
+            foreach (var refinery in destinations)
+            {
                 var config = ConfigObject.Parse(ConfigsSections.RefineryManager, refinery.CustomData);
                 if (config == null || config.Data.Keys.Count == 0)
                     continue;
@@ -550,7 +568,7 @@ namespace IngameScript
                     if (item == null)
                         continue;
 
-                    InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), destinationInventory);
+                    InventoryHelper.TransferFromBlocks(item.Type, sources, destinationInventory);
                     if (destinationInventory.IsFull)
                         break;
                 }
