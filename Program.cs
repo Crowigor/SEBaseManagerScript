@@ -41,7 +41,7 @@ namespace IngameScript
         private readonly TasksManager _tasks;
         private BlocksManager _blocks;
         private ItemsManager _items;
-        private Dictionary<long, DisplayObject> _displays;
+        private Dictionary<string, DisplayObject> _displays;
         private Dictionary<string, List<string>> _messages;
         private ConfigObject _globalConfig;
 
@@ -133,7 +133,7 @@ namespace IngameScript
                 _items.ClearInventories();
 
             if (_displays == null)
-                _displays = new Dictionary<long, DisplayObject>();
+                _displays = new Dictionary<string, DisplayObject>();
 
             if (_messages == null)
                 _messages = new Dictionary<string, List<string>>();
@@ -176,28 +176,55 @@ namespace IngameScript
             }
 
             // Update displays
-            var displays = new Dictionary<long, DisplayObject>();
-            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Display))
+            var displays = new Dictionary<string, DisplayObject>();
+            foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.TextSurfaceProvider))
             {
                 if (!ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
                     continue;
 
-                var config = GetDisplayConfig(terminalBlock);
-                var selector = terminalBlock.GetId();
-                var delay = terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus) ? 1 : 5;
-                var listingDelay = int.Parse(config.Get("listingDelay"));
 
-                DisplayObject display;
-                if (_displays.ContainsKey(selector))
+                var provider = terminalBlock as IMyTextSurfaceProvider;
+                if (provider == null)
                 {
-                    display = _displays[selector];
-                    display.UpdateDelay = delay;
-                    display.ListingDelay = listingDelay;
+                    continue;
                 }
-                else
-                    display = new DisplayObject(selector, delay, listingDelay);
 
-                displays[selector] = display;
+                var count = provider.SurfaceCount;
+                if (count <= 0)
+                {
+                    continue;
+                }
+
+                for (int index = 0; index < count; index++)
+                {
+                    var config = GetDisplayConfig(terminalBlock, index);
+                    var selector = terminalBlock.GetId() + ":" + index;
+                    var delay = 5;
+                    if (index == 0 && terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus + "]"))
+                    {
+                        delay = 1;
+                    }
+                    else if (terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus + ":" + index))
+                    {
+                        delay = 1;
+                    }
+
+                    var listingDelay = int.Parse(config.Get("listingDelay"));
+
+                    DisplayObject display;
+                    if (_displays.ContainsKey(selector))
+                    {
+                        display = _displays[selector];
+                        display.UpdateDelay = delay;
+                        display.ListingDelay = listingDelay;
+                    }
+                    else
+                    {
+                        display = new DisplayObject(selector, terminalBlock.GetId(), index, delay, listingDelay);
+                    }
+
+                    displays[selector] = display;
+                }
             }
 
             _displays = displays;
@@ -737,24 +764,38 @@ namespace IngameScript
 
         private void TaskDisplaysManager()
         {
-            foreach (var selector in _displays.Keys.ToList())
+            foreach (var displayObject in _displays.Values.ToList())
             {
-                var terminalBlock = _blocks.GetBlock(selector, BlocksManager.BlockType.Display);
+                var terminalBlock = _blocks.GetBlock(displayObject.BlockSelector,
+                    BlocksManager.BlockType.TextSurfaceProvider);
 
                 if (terminalBlock == null || !terminalBlock.IsWorking ||
                     !ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
                     continue;
 
-                // Update display lines
-                var displayObject = _displays[selector];
-                var config = GetDisplayConfig(terminalBlock);
+                var config = GetDisplayConfig(terminalBlock, displayObject.SurfaceIndex);
                 var language = config.Get("language");
+
                 displayObject.Tick();
+
                 if (displayObject.NeedUpdate())
                 {
                     displayObject.TickReset();
                     displayObject.ClearLines();
-                    if (terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus))
+
+                    var isDisplayStatus = false;
+                    if (displayObject.SurfaceIndex == 0 &&
+                        terminalBlock.CustomData.Contains(ConfigsSections.DisplayStatus + "]"))
+                    {
+                        isDisplayStatus = true;
+                    }
+                    else if (terminalBlock.CustomData.Contains(
+                                 ConfigsSections.DisplayStatus + ":" + displayObject.SurfaceIndex))
+                    {
+                        isDisplayStatus = true;
+                    }
+
+                    if (isDisplayStatus)
                     {
                         foreach (var line in _tasks.GetStatusText())
                         {
@@ -781,8 +822,33 @@ namespace IngameScript
                         foreach (var configSection in configs)
                         {
                             var configKey = ConfigsHelper.RemoveSectionIndex(configSection.Key);
-                            if (!ConfigsSections.Displays.Contains(configKey) || configSection.Value.Count == 0)
+                            if (!ConfigsSections.Displays.Any(key => configKey.Contains(key))
+                                || configSection.Value.Count == 0)
+                            {
                                 continue;
+                            }
+
+                            var configIndexPosition = configKey.LastIndexOf(":", StringComparison.Ordinal);
+                            var configIndexString = configKey.Substring(configIndexPosition + 1);
+                            if (!configIndexString.All(char.IsDigit))
+                            {
+                                if (displayObject.SurfaceIndex == 0)
+                                {
+                                    configIndexString = "0";
+                                }
+                                else
+                                    continue;
+                            }
+                            else
+                            {
+                                configKey = configKey.Substring(0, configIndexPosition);
+                            }
+
+                            var configIndex = int.Parse(configIndexString);
+                            if (configIndex != displayObject.SurfaceIndex)
+                            {
+                                continue;
+                            }
 
                             foreach (var line in configSection.Value.ToList())
                             {
@@ -843,9 +909,20 @@ namespace IngameScript
                     }
                 }
 
-                _displays[selector] = displayObject;
+                _displays[displayObject.Selector] = displayObject;
 
-                var display = (IMyTextPanel)terminalBlock;
+                var provider = terminalBlock as IMyTextSurfaceProvider;
+                var display = provider.GetSurface(displayObject.SurfaceIndex);
+                if (display == null)
+                {
+                    continue;
+                }
+
+                if (displayObject.GetLines().Count == 0 && string.IsNullOrEmpty(config.Get("title")))
+                {
+                    continue;
+                }
+                
                 var frame = display.DrawFrame();
                 var viewport = DisplayObject.GetViewport(display);
                 var padding = float.Parse(config.Get("padding"));
@@ -875,10 +952,11 @@ namespace IngameScript
                 var title = config.Get("title");
                 if (!string.IsNullOrEmpty(title))
                 {
-                    display.WritePublicTitle(title);
                     foreach (var sprite in DisplayObject.GetSurfaceTitle(display, title, font, fontSize, lineHeight,
                                  border, padding))
+                    {
                         frame.Add(sprite);
+                    }
 
                     positionTop = viewport.Y + lineHeight + padding * 2;
                 }
@@ -1018,7 +1096,7 @@ namespace IngameScript
             display.AddImageToSelection("LCD_Economy_Graph_2");
         }
 
-        private ConfigObject GetDisplayConfig(IMyTerminalBlock block)
+        private ConfigObject GetDisplayConfig(IMyTerminalBlock block, int index = 0)
         {
             var global = new ConfigObject(ConfigsSections.DisplayConfig, new Dictionary<string, string>
             {
@@ -1031,7 +1109,13 @@ namespace IngameScript
                 { "listingDelay", _globalConfig.Get("DC:listingDelay", "10") },
                 { "language", _globalConfig.Get("DC:language", "source") },
             });
-            var config = ConfigObject.Parse(ConfigsSections.DisplayConfig, block.CustomData);
+
+            var config = ConfigObject.Parse(ConfigsSections.DisplayConfig + ":" + index, block.CustomData);
+            if (config == null && index == 0)
+            {
+                config = ConfigObject.Parse(ConfigsSections.DisplayConfig, block.CustomData);
+            }
+
             return ConfigsHelper.Merge(ConfigsSections.DisplayConfig,
                 new List<ConfigObject> { global, config });
         }

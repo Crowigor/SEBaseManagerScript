@@ -11,22 +11,27 @@ namespace IngameScript
     {
         public class DisplayObject
         {
-            public long Selector;
+            public string Selector;
+            public long BlockSelector;
+            public int SurfaceIndex;
             public int UpdateDelay;
             private int _updateCurrentTick;
             public int ListingDelay;
             private int _listingCurrentTick;
-            private readonly List<List<MySprite>> Lines;
+            private readonly List<List<MySprite>> _lines;
             private int _currentLine;
 
-            public DisplayObject(long selector, int updateDelay, int listingDelay = 5)
+            public DisplayObject(string selector, long blockSelector, int surfaceIndex, int updateDelay = 5,
+                int listingDelay = 5)
             {
                 Selector = selector;
+                BlockSelector = blockSelector;
+                SurfaceIndex = surfaceIndex;
                 UpdateDelay = updateDelay;
                 _updateCurrentTick = updateDelay;
                 ListingDelay = listingDelay;
                 _listingCurrentTick = 0;
-                Lines = new List<List<MySprite>>();
+                _lines = new List<List<MySprite>>();
                 _currentLine = 0;
             }
 
@@ -65,7 +70,7 @@ namespace IngameScript
                 ListingReset();
                 var current = _currentLine;
                 var result = current + limit;
-                if (Lines.Count - 1 < result)
+                if (_lines.Count - 1 < result)
                     result = 0;
 
                 _currentLine = result;
@@ -73,7 +78,7 @@ namespace IngameScript
 
             public void AddLine(params MySprite[] sprites)
             {
-                Lines.Add(sprites.ToList());
+                _lines.Add(sprites.ToList());
             }
 
             public void AddBlankLine()
@@ -94,18 +99,18 @@ namespace IngameScript
             public List<List<MySprite>> GetLines(int limit = 0)
             {
                 if (limit <= 0)
-                    return Lines;
+                    return _lines;
 
                 var start = _currentLine;
-                var count = Math.Min(limit, Lines.Count - start);
+                var count = Math.Min(limit, _lines.Count - start);
 
-                return Lines.GetRange(start, count);
+                return _lines.GetRange(start, count);
             }
 
             public string LinesToString()
             {
                 var result = new List<string>();
-                foreach (var row in Lines)
+                foreach (var row in _lines)
                 {
                     if (row.Count == 0)
                     {
@@ -125,7 +130,7 @@ namespace IngameScript
 
             public void ClearLines()
             {
-                Lines.Clear();
+                _lines.Clear();
             }
 
             public static MySprite BlankSprite()

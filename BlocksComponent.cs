@@ -41,6 +41,7 @@ namespace IngameScript
                 Sensor,
                 Sorter,
                 TerminalBlock,
+                TextSurfaceProvider,
                 Turret,
                 Welder
             }
@@ -67,7 +68,7 @@ namespace IngameScript
 
                 var blocks = new List<IMyTerminalBlock>();
                 grid.SearchBlocksOfName(tag, blocks);
-                blocks.Sort((a, b) => string.Compare(a.CustomName, b.CustomName));
+                blocks.Sort((a, b) => string.CompareOrdinal(a.CustomName, b.CustomName));
 
                 foreach (var block in blocks)
                 {
@@ -173,6 +174,8 @@ namespace IngameScript
                     result.Add(BlockType.Sensor);
                 if (block is IMyConveyorSorter)
                     result.Add(BlockType.Sorter);
+                if (block is IMyTextSurfaceProvider)
+                    result.Add(BlockType.TextSurfaceProvider);
                 if (block is IMyLargeConveyorTurretBase)
                     result.Add(BlockType.Turret);
                 if (block is IMyShipWelder)
