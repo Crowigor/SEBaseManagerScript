@@ -7,6 +7,7 @@ namespace IngameScript
     partial class Program
     {
         public const string RootConfigSectionName = "ROOT CONFIG SECTION";
+        public const string SectionIndexSeparator = "::_";
 
         public class ConfigObject
         {
@@ -68,7 +69,7 @@ namespace IngameScript
 
         public static class ConfigsHelper
         {
-            public static Dictionary<string, List<string>> GetSections(string data)
+            public static Dictionary<string, List<string>> GetSections(string data, bool group = true)
             {
                 var result = new Dictionary<string, List<string>>();
 
@@ -77,6 +78,7 @@ namespace IngameScript
                     return result;
 
                 var section = RootConfigSectionName;
+                var index = 1;
                 result[section] = new List<string>();
                 foreach (var line in data.Split('\n'))
                 {
@@ -84,6 +86,12 @@ namespace IngameScript
                     if (sectionContent.StartsWith("[") && sectionContent.EndsWith("]"))
                     {
                         section = sectionContent.Substring(1, sectionContent.Length - 2).Trim();
+                        if (!group)
+                        {
+                            section = AddSectionIndex(section, index);
+                            index++;
+                        }
+
                         if (!result.ContainsKey(section))
                             result[section] = new List<string>();
                         continue;
@@ -107,6 +115,27 @@ namespace IngameScript
                 }
 
                 return result;
+            }
+
+            public static string AddSectionIndex(string section, int index)
+            {
+                return section + SectionIndexSeparator + index;
+            }
+
+            public static string RemoveSectionIndex(string section)
+            {
+                if (string.IsNullOrEmpty(section))
+                {
+                    return section;
+                }
+
+                var position = section.LastIndexOf(SectionIndexSeparator, StringComparison.Ordinal);
+                if (position < 0)
+                {
+                    return section;
+                }
+               
+                return section.Substring(0, position);
             }
 
             public static KeyValuePair<string, string> ParseLine(string line)

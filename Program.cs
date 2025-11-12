@@ -613,8 +613,8 @@ namespace IngameScript
 
                 var connectedBlocks = new List<IMyTerminalBlock>();
                 GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(connectedBlocks,
-                    block => block.CubeGrid == connector.OtherConnector.CubeGrid &&
-                             block.CustomName.Contains(droneBlocksName));
+                    block => block.CubeGrid == connector.OtherConnector.CubeGrid
+                             && droneBlocksName != null && block.CustomName.Contains(droneBlocksName));
                 if (connectedBlocks.Count == 0)
                 {
                     _messages["Stop Drones"].Add(connector.CustomName + ":");
@@ -627,7 +627,7 @@ namespace IngameScript
                 float total = 0;
                 foreach (var container in _blocks.GetBlocks(BlocksManager.BlockType.Container))
                 {
-                    if (!container.CustomName.Contains(baseContainersName))
+                    if (baseContainersName != null && !container.CustomName.Contains(baseContainersName))
                         continue;
                     var inventory = container.GetInventory(0);
 
@@ -777,13 +777,11 @@ namespace IngameScript
                     }
                     else
                     {
-                        var configs = ConfigsHelper.GetSections(terminalBlock.CustomData);
+                        var configs = ConfigsHelper.GetSections(terminalBlock.CustomData, false);
                         foreach (var configSection in configs)
                         {
-                            if (configSection.Value.Count == 0)
-                                continue;
-
-                            if (!ConfigsSections.Displays.Contains(configSection.Key))
+                            var configKey = ConfigsHelper.RemoveSectionIndex(configSection.Key);
+                            if (!ConfigsSections.Displays.Contains(configKey) || configSection.Value.Count == 0)
                                 continue;
 
                             foreach (var line in configSection.Value.ToList())
@@ -795,7 +793,7 @@ namespace IngameScript
                                     continue;
                                 }
 
-                                if (configSection.Key == ConfigsSections.DisplayItems)
+                                if (configKey == ConfigsSections.DisplayItems)
                                 {
                                     var item = _items.GetItem(clear);
                                     if (item != null)
@@ -808,7 +806,7 @@ namespace IngameScript
                                     }
                                 }
 
-                                if (configSection.Key == ConfigsSections.DisplayLimits && line.Contains("="))
+                                if (configKey == ConfigsSections.DisplayLimits && line.Contains("="))
                                 {
                                     var content = ConfigsHelper.ParseLine(line);
                                     if (!string.IsNullOrEmpty(content.Key))
