@@ -19,6 +19,7 @@ namespace IngameScript
             public int ListingDelay;
             private int _listingCurrentTick;
             private readonly List<List<MySprite>> _lines;
+            private readonly List<string> _textLines;
             private int _currentLine;
 
             public DisplayObject(string selector, long blockSelector, int surfaceIndex, int updateDelay = 5,
@@ -32,6 +33,7 @@ namespace IngameScript
                 ListingDelay = listingDelay;
                 _listingCurrentTick = 0;
                 _lines = new List<List<MySprite>>();
+                _textLines = new List<string>();
                 _currentLine = 0;
             }
 
@@ -76,19 +78,60 @@ namespace IngameScript
                 _currentLine = result;
             }
 
+            public void AddLine(string text, params MySprite[] sprites)
+            {
+                _textLines.Add(text);
+                _lines.Add(sprites.ToList());
+            }
+
             public void AddLine(params MySprite[] sprites)
             {
-                _lines.Add(sprites.ToList());
+                var all = new List<string>();
+                var left = new List<string>();
+                var center = new List<string>();
+                var right = new List<string>();
+                foreach (var sprite in sprites)
+                {
+                    if (sprite.Alignment == TextAlignment.RIGHT)
+                    {
+                        right.Add(sprite.Data);
+                    }
+                    else if (sprite.Alignment == TextAlignment.CENTER)
+                    {
+                        center.Add(sprite.Data);
+                    }
+                    else
+                    {
+                        left.Add(sprite.Data);
+                    }
+                }
+
+                if (left.Count > 0)
+                {
+                    all.Add(string.Join(" ", left));
+                }
+
+                if (center.Count > 0)
+                {
+                    all.Add(string.Join(" ", center));
+                }
+
+                if (right.Count > 0)
+                {
+                    all.Add(string.Join(" ", right));
+                }
+
+                AddLine(string.Join(" ", all.ToArray()), sprites);
             }
 
             public void AddBlankLine()
             {
-                AddLine(BlankSprite());
+                AddLine("", BlankSprite());
             }
 
             public void AddTextLine(string text, TextAlignment alignment = TextAlignment.LEFT, Color? color = null)
             {
-                AddLine(TextSprite(text, alignment, color));
+                AddLine(text, TextSprite(text, alignment, color));
             }
 
             public void AddCustomTextLine(string text)
@@ -99,7 +142,9 @@ namespace IngameScript
             public List<List<MySprite>> GetLines(int limit = 0)
             {
                 if (limit <= 0)
+                {
                     return _lines;
+                }
 
                 var start = _currentLine;
                 var count = Math.Min(limit, _lines.Count - start);
@@ -109,28 +154,13 @@ namespace IngameScript
 
             public string LinesToString()
             {
-                var result = new List<string>();
-                foreach (var row in _lines)
-                {
-                    if (row.Count == 0)
-                    {
-                        result.Add("");
-                        continue;
-                    }
-
-                    var line = new List<string>();
-                    foreach (var sprite in row)
-                        line.Add(sprite.Data);
-
-                    result.Add(string.Join(" || ", line.ToArray()));
-                }
-
-                return string.Join("\n", result.ToArray());
+                return string.Join("\n", _textLines);
             }
 
             public void ClearLines()
             {
                 _lines.Clear();
+                _textLines.Clear();
             }
 
             public static MySprite BlankSprite()
@@ -153,7 +183,9 @@ namespace IngameScript
             public static MySprite ParseTextSprite(string text = null)
             {
                 if (string.IsNullOrEmpty(text))
+                {
                     return BlankSprite();
+                }
 
                 var alignment = TextAlignment.LEFT;
                 var pattern = @"^(center|right|left)\s*";

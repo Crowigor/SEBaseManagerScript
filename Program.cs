@@ -971,9 +971,12 @@ namespace IngameScript
                                     var item = _items.GetItem(clear);
                                     if (item != null)
                                     {
+                                        var label = item.Title(language);
+                                        var text = item.Amounts.ToString();
                                         displayObject.AddLine(
-                                            DisplayObject.TextSprite(item.Title(language)),
-                                            DisplayObject.TextSprite(item.Amounts.ToString(), TextAlignment.RIGHT)
+                                            label + ": " + text,
+                                            DisplayObject.TextSprite(label),
+                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT)
                                         );
                                         continue;
                                     }
@@ -1007,8 +1010,11 @@ namespace IngameScript
                                             color = Color.Red;
                                         }
 
-                                        displayObject.AddLine(DisplayObject.TextSprite(label),
-                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color));
+                                        displayObject.AddLine(
+                                            label + ": " + text,
+                                            DisplayObject.TextSprite(label),
+                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
+                                        );
 
                                         continue;
                                     }
@@ -1052,30 +1058,48 @@ namespace IngameScript
                                                 }
 
                                                 Color? color = null;
-                                                if (sumObject.CalculateRemained
-                                                    && sumObject.RemainedVector != VolumeObject.RemainedVectors.None
-                                                    && sumObject.CurrentPercent != 0 && sumObject.CurrentPercent < 100)
+                                                if (sumObject.CalculateRemained)
                                                 {
-                                                    var time = SecondsToString(sumObject.Remained);
-                                                    text += " (";
-                                                    if (sumObject.RemainedVector == VolumeObject.RemainedVectors.Plus)
+                                                    if (sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
                                                     {
-                                                        text += "+";
-                                                        color = Color.Green;
-                                                    }
-                                                    else if (sumObject.RemainedVector ==
-                                                             VolumeObject.RemainedVectors.Minus)
-                                                    {
-                                                        text += "-";
-                                                        color = Color.Red;
-                                                    }
+                                                        if (sumObject.RemainedVector ==
+                                                            VolumeObject.RemainedVectors.Plus)
+                                                        {
+                                                            color = Color.Green;
+                                                        }
+                                                        else if (sumObject.RemainedVector ==
+                                                                 VolumeObject.RemainedVectors.Minus)
+                                                        {
+                                                            color = Color.Red;
+                                                        }
 
-                                                    text += time + ")";
+                                                        if (sumObject.Remained > 2)
+                                                        {
+                                                            var time = SecondsToString(sumObject.Remained);
+                                                            text += " (";
+                                                            if (sumObject.RemainedVector ==
+                                                                VolumeObject.RemainedVectors.Plus)
+                                                            {
+                                                                text += "+";
+                                                            }
+                                                            else if (sumObject.RemainedVector ==
+                                                                     VolumeObject.RemainedVectors.Minus)
+                                                            {
+                                                                text += "-";
+                                                            }
+
+                                                            text += time + ")";
+                                                        }
+                                                    }
                                                 }
 
-                                                displayObject.AddLine(DisplayObject.TextSprite(lineLabel),
-                                                    DisplayObject.TextSprite(text, TextAlignment.RIGHT, color));
+                                                displayObject.AddLine(
+                                                    lineLabel + ": " + text,
+                                                    DisplayObject.TextSprite(lineLabel),
+                                                    DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
+                                                );
                                             }
+
                                             continue;
                                         }
                                     }
@@ -1186,6 +1210,7 @@ namespace IngameScript
                 display.ContentType = ContentType.SCRIPT;
                 display.Script = "";
                 display.WriteText(displayObject.LinesToString());
+
                 frame.Dispose();
             }
         }
