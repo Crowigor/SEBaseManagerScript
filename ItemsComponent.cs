@@ -100,7 +100,8 @@ namespace IngameScript
                 Name = name;
                 Localization = localization;
                 Type = MyItemType.Parse(type);
-                Aliases = new List<string> { Selector.ToLower(), Name.ToLower(), Localization.ToLower(), Type.ToString().ToLower() };
+                Aliases = new List<string>
+                    { Selector.ToLower(), Name.ToLower(), Localization.ToLower(), Type.ToString().ToLower() };
                 Blueprints = new Dictionary<MyDefinitionId, MyFixedPoint>();
                 if (blueprints != null)
                 {
@@ -116,7 +117,7 @@ namespace IngameScript
                 ClearAmount();
             }
 
-            public bool IsCrafteble()
+            public bool IsCraftable()
             {
                 return (Blueprints.Count > 0);
             }
@@ -124,7 +125,9 @@ namespace IngameScript
             public string Title(string language = "local")
             {
                 if (language.ToLower() == "source")
+                {
                     return Name;
+                }
 
                 return Localization;
             }

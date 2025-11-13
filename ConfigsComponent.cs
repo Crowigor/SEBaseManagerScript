@@ -50,10 +50,17 @@ namespace IngameScript
 
             public static ConfigObject Parse(string section, string data = "")
             {
+                if (string.IsNullOrEmpty(section))
+                {
+                    return null;
+                }
+
                 var sections = ConfigsHelper.GetSections(data);
                 List<string> lines;
                 if (!sections.TryGetValue(section, out lines))
+                {
                     return null;
+                }
 
                 var result = new ConfigObject(section);
                 foreach (var line in lines)
@@ -134,7 +141,7 @@ namespace IngameScript
                 {
                     return section;
                 }
-               
+
                 return section.Substring(0, position);
             }
 
