@@ -31,9 +31,10 @@ namespace IngameScript
             public const string DisplayItems = "CBM:DI";
             public const string DisplayLimits = "CBM:DL";
             public const string DisplayVolumes = "CBM:DV";
+            public const string DisplayVolumesRemained = "CBM:DVR";
 
             public static readonly List<string> Displays = new List<string>
-                { DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes };
+                { DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes, DisplayVolumesRemained };
         }
 
         private readonly Dictionary<string, string> _legacyReplace = new Dictionary<string, string>
@@ -161,6 +162,8 @@ namespace IngameScript
                 _messages.Clear();
             }
 
+            _messages["d"] = new List<string>(); 
+
             // Add inventories to items
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTank))
             {
@@ -224,7 +227,8 @@ namespace IngameScript
                     {
                         delay = 1;
                     }
-                    else if (GetDisplayConfigfSection(terminalBlock, ConfigsSections.DisplayVolumes, index) != null)
+                    else if (GetDisplayConfigfSection(terminalBlock, ConfigsSections.DisplayVolumesRemained, index) !=
+                             null)
                     {
                         delay = 3;
                     }
@@ -1020,18 +1024,19 @@ namespace IngameScript
                                     }
                                 }
 
-                                if (configKey == ConfigsSections.DisplayVolumes && line.Contains("="))
+                                if ((configKey == ConfigsSections.DisplayVolumes
+                                     || configKey == ConfigsSections.DisplayVolumesRemained) && line.Contains("="))
                                 {
                                     var content = ConfigsHelper.ParseLine(line);
                                     if (!string.IsNullOrEmpty(content.Key))
                                     {
                                         var label = content.Key;
-                                        var blockName = content.Value;
+                                        var blockName = content.Value.ToLower();
 
                                         var groups = new Dictionary<VolumeObject.VolumeTypes, List<VolumeObject>>();
                                         foreach (var volumeObject in _volumes.Values)
                                         {
-                                            if (!volumeObject.BlockName.Contains(blockName))
+                                            if (!volumeObject.BlockName.ToLower().Contains(blockName))
                                             {
                                                 continue;
                                             }
@@ -1050,6 +1055,12 @@ namespace IngameScript
                                             foreach (var volumeType in groups.Keys)
                                             {
                                                 var sumObject = new VolumeObject(groups[volumeType], volumeType);
+                                                if (!sumObject.IsValid)
+                                                {
+                                                   continue;
+                                                }
+                                                _messages["d"].Add(sumObject.BlockName);
+
                                                 var lineLabel = label;
                                                 var text = sumObject.CurrentPercent + "%";
                                                 if (multiTypes)
@@ -1058,38 +1069,36 @@ namespace IngameScript
                                                 }
 
                                                 Color? color = null;
-                                                if (sumObject.CalculateRemained)
+                                                if (configKey == ConfigsSections.DisplayVolumesRemained &&
+                                                    sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
                                                 {
-                                                    if (sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
+                                                    if (sumObject.RemainedVector ==
+                                                        VolumeObject.RemainedVectors.Plus)
                                                     {
+                                                        color = Color.Green;
+                                                    }
+                                                    else if (sumObject.RemainedVector ==
+                                                             VolumeObject.RemainedVectors.Minus)
+                                                    {
+                                                        color = Color.Red;
+                                                    }
+
+                                                    if (sumObject.Remained > 2)
+                                                    {
+                                                        var time = SecondsToString(sumObject.Remained);
+                                                        text += " (";
                                                         if (sumObject.RemainedVector ==
                                                             VolumeObject.RemainedVectors.Plus)
                                                         {
-                                                            color = Color.Green;
+                                                            text += "+";
                                                         }
                                                         else if (sumObject.RemainedVector ==
                                                                  VolumeObject.RemainedVectors.Minus)
                                                         {
-                                                            color = Color.Red;
+                                                            text += "-";
                                                         }
 
-                                                        if (sumObject.Remained > 2)
-                                                        {
-                                                            var time = SecondsToString(sumObject.Remained);
-                                                            text += " (";
-                                                            if (sumObject.RemainedVector ==
-                                                                VolumeObject.RemainedVectors.Plus)
-                                                            {
-                                                                text += "+";
-                                                            }
-                                                            else if (sumObject.RemainedVector ==
-                                                                     VolumeObject.RemainedVectors.Minus)
-                                                            {
-                                                                text += "-";
-                                                            }
-
-                                                            text += time + ")";
-                                                        }
+                                                        text += time + ")";
                                                     }
                                                 }
 

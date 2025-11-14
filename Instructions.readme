@@ -15,3 +15,5 @@ Tags for custom data
 [CBM:DS] - Display Script Status
 [CBM:DI] - Display Items Count
 [CBM:DL] - Display Items Limits
+[CBM:DV] - Display Blocks Volumes
+[CBM:DVR] - Display Blocks Volumes with Remained vector and timers

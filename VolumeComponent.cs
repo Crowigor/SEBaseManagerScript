@@ -37,28 +37,20 @@ namespace IngameScript
             public double CurrentTime;
             public double LastTime;
             public double Remained;
-            public readonly bool CalculateRemained;
             public RemainedVectors RemainedVector;
             public bool IsValid { get; private set; }
-
 
             public VolumeObject(long selector, VolumeTypes volumeType, string blockName)
             {
                 Selector = selector;
                 VolumeType = volumeType;
                 BlockName = blockName;
-
-                var calculateRemained = volumeType == VolumeTypes.Battery || volumeType == VolumeTypes.Tank;
-                CalculateRemained = calculateRemained;
                 RemainedVector = RemainedVectors.None;
                 IsValid = true;
             }
 
             public VolumeObject(List<VolumeObject> objects, VolumeTypes volumeType)
             {
-                var calculateRemained = volumeType == VolumeTypes.Battery || volumeType == VolumeTypes.Tank;
-                CalculateRemained = calculateRemained;
-
                 int count = 0;
 
                 double sumCurrentTime = 0;
@@ -91,7 +83,9 @@ namespace IngameScript
                     IsValid = false;
                     return;
                 }
-                
+
+                IsValid = true;
+
                 CurrentVolume = lastVolume;
                 CurrentTime = count > 0 ? sumLastTime / count : 0;
 
@@ -128,67 +122,61 @@ namespace IngameScript
                     CurrentPercent = 0;
                 }
 
-                if (CalculateRemained)
+
+                if (CurrentVolume > LastVolume)
                 {
-                    if (CurrentVolume > LastVolume)
+                    RemainedVector = RemainedVectors.Plus;
+                }
+                else if (CurrentVolume < LastVolume)
+                {
+                    RemainedVector = RemainedVectors.Minus;
+                }
+                else
+                {
+                    RemainedVector = RemainedVectors.None;
+                }
+
+                if (RemainedVector != RemainedVectors.None)
+                {
+                    var time = CurrentTime - LastTime;
+                    if (time <= 0)
                     {
-                        RemainedVector = RemainedVectors.Plus;
+                        Remained = 0;
+                        return;
                     }
-                    else if (CurrentVolume < LastVolume)
+
+                    var volume = CurrentVolume - LastVolume;
+                    var rate = volume / time;
+                    const double eps = 1e-9;
+                    if (Math.Abs(rate) < eps)
                     {
-                        RemainedVector = RemainedVectors.Minus;
+                        Remained = 0;
+
+                        return;
                     }
-                    else
+
+                    if (RemainedVector == RemainedVectors.Plus)
                     {
-                        RemainedVector = RemainedVectors.None;
-                    }
-
-                    if (RemainedVector != RemainedVectors.None)
-                    {
-                        var time = CurrentTime - LastTime;
-                        if (time <= 0)
+                        if (MaxVolume > 0 && CurrentVolume < MaxVolume)
                         {
-                            Remained = 0;
-                            return;
-                        }
-
-                        var volume = CurrentVolume - LastVolume;
-                        var rate = volume / time;
-                        const double eps = 1e-9;
-                        if (Math.Abs(rate) < eps)
-                        {
-                            Remained = 0;
-
-                            return;
-                        }
-
-                        if (RemainedVector == RemainedVectors.Plus)
-                        {
-                            if (MaxVolume > 0 && CurrentVolume < MaxVolume)
-                            {
-                                var left = MaxVolume - CurrentVolume;
-                                Remained = left > 0 ? Math.Max(0, left / rate) : 0;
-                            }
-                            else
-                            {
-                                Remained = 0;
-                            }
+                            var left = MaxVolume - CurrentVolume;
+                            Remained = left > 0 ? Math.Max(0, left / rate) : 0;
                         }
                         else
                         {
-                            if (CurrentVolume > 0)
-                            {
-                                Remained = Math.Max(0, CurrentVolume / Math.Abs(rate));
-                            }
-                            else
-                            {
-                                Remained = 0;
-                            }
+                            Remained = 0;
                         }
                     }
                     else
                     {
-                        Remained = 0;
+                        if (CurrentVolume > 0)
+                        {
+                            Remained = Math.Max(0, CurrentVolume / Math.Abs(rate));
+                        }
+                        else
+                        {
+                            Remained = 0;
+                        }
                     }
                 }
             }
