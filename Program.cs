@@ -622,7 +622,7 @@ namespace IngameScript
                 }
 
                 // // Move items for disassembly
-                if (assembler.Mode != MyAssemblerMode.Disassembly)
+                if (assembler.Mode == MyAssemblerMode.Disassembly)
                 {
                     var queue = new List<MyProductionItem>();
                     assembler.GetQueue(queue);
@@ -1068,8 +1068,6 @@ namespace IngameScript
                                                 {
                                                     continue;
                                                 }
-
-                                                _messages["d"].Add(sumObject.BlockName);
 
                                                 var lineLabel = label;
                                                 var text = sumObject.CurrentPercent + "%";
