@@ -50,7 +50,7 @@ namespace IngameScript
 
             public static ConfigObject Parse(string section, string data = "")
             {
-                if (string.IsNullOrEmpty(section))
+                if (string.IsNullOrEmpty(section) || !data.Contains(section))
                 {
                     return null;
                 }
@@ -90,6 +90,11 @@ namespace IngameScript
                 foreach (var line in data.Split('\n'))
                 {
                     var sectionContent = line.Trim();
+                    if (sectionContent.StartsWith("#"))
+                    {
+                        continue;
+                    }
+
                     if (sectionContent.StartsWith("[") && sectionContent.EndsWith("]"))
                     {
                         section = sectionContent.Substring(1, sectionContent.Length - 2).Trim();

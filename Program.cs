@@ -162,8 +162,6 @@ namespace IngameScript
                 _messages.Clear();
             }
 
-            _messages["d"] = new List<string>(); 
-
             // Add inventories to items
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTank))
             {
@@ -623,11 +621,13 @@ namespace IngameScript
                     }
                 }
 
-                // Move items for disassembly
-                if (assembler.Mode != MyAssemblerMode.Disassembly) continue;
+                // // Move items for disassembly
+                if (assembler.Mode != MyAssemblerMode.Disassembly)
                 {
                     var queue = new List<MyProductionItem>();
                     assembler.GetQueue(queue);
+                    var max = 5;
+                    var current = 0;
                     foreach (var queueItem in queue)
                     {
                         var item = _items.GetItem(queueItem.BlueprintId.ToString());
@@ -640,8 +640,17 @@ namespace IngameScript
                                 continue;
 
                             MyFixedPoint quantity = queueItem.Amount * blueprint.Value;
-                            InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(),
+                            var transfer = InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(),
                                 assembler.GetInventory(1), quantity);
+                            if (transfer != null && transfer > 0)
+                            {
+                                current++;
+                            }
+
+                            if (current >= max)
+                            {
+                                break;
+                            }
                         }
                     }
                 }
@@ -1057,8 +1066,9 @@ namespace IngameScript
                                                 var sumObject = new VolumeObject(groups[volumeType], volumeType);
                                                 if (!sumObject.IsValid)
                                                 {
-                                                   continue;
+                                                    continue;
                                                 }
+
                                                 _messages["d"].Add(sumObject.BlockName);
 
                                                 var lineLabel = label;
