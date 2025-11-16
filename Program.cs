@@ -646,12 +646,12 @@ namespace IngameScript
                             {
                                 current++;
                             }
-
-                            if (current >= max)
-                            {
-                                break;
-                            }
+                            
+                            break;
                         }
+                        
+                        if (current >= max)
+                            break;
                     }
                 }
             }
