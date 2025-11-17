@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Sandbox.Game.GameSystems;
 using VRage;
+using VRage.Game;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
 using VRage.Profiler;
@@ -19,6 +20,7 @@ namespace IngameScript
         public static class ConfigsSections
         {
             public const string GlobalConfig = "CBM:GC";
+            public const string CustomItems = "CBM:CI";
             public const string DisplayConfig = "CBM:DC";
             public const string InventoryManager = "CBM:IM";
             public const string SpecialContainer = "CBM:SC";
@@ -37,10 +39,8 @@ namespace IngameScript
                 { DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes, DisplayVolumesRemained };
         }
 
-        private readonly Dictionary<string, string> _legacyReplace = new Dictionary<string, string>
-        {
-            { "DronBlocksName", "DroneBlocksName" }
-        };
+        private const string ScanPrefix = "CBM-SCAN";
+        private const string Debug = "DEBUG";
 
         private readonly TasksManager _tasks;
         private BlocksManager _blocks;
@@ -73,16 +73,6 @@ namespace IngameScript
             // Run Initialization
             TaskInitialization();
 
-            // Legacy replace
-            foreach (var block in _blocks.GetBlocks())
-            {
-                foreach (var replace in _legacyReplace)
-                {
-                    if (block.CustomData.Contains(replace.Key))
-                        block.CustomData = block.CustomData.Replace(replace.Key, replace.Value);
-                }
-            }
-
             // Set update rate
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
@@ -110,6 +100,10 @@ namespace IngameScript
             {
                 ActionClearInventories(argument);
             }
+            else if (argument.StartsWith("scan"))
+            {
+                ActionScan();
+            }
         }
 
         #endregion
@@ -118,6 +112,15 @@ namespace IngameScript
 
         private void TaskInitialization()
         {
+            if (_messages == null)
+            {
+                _messages = new Dictionary<string, List<string>>();
+            }
+            else
+            {
+                _messages.Clear();
+            }
+
             ConfigureMeDisplay();
             CheckGlobalConfig();
             var ignoreTypes = new List<BlocksManager.BlockType>
@@ -136,7 +139,7 @@ namespace IngameScript
 
             if (_items == null)
             {
-                _items = new ItemsManager();
+                _items = new ItemsManager(ItemsManager.GetCustomItemsFromString(Me.CustomData));
             }
             else
             {
@@ -151,15 +154,6 @@ namespace IngameScript
             if (_volumes == null)
             {
                 _volumes = new Dictionary<long, VolumeObject>();
-            }
-
-            if (_messages == null)
-            {
-                _messages = new Dictionary<string, List<string>>();
-            }
-            else
-            {
-                _messages.Clear();
             }
 
             // Add inventories to items
@@ -646,10 +640,10 @@ namespace IngameScript
                             {
                                 current++;
                             }
-                            
+
                             break;
                         }
-                        
+
                         if (current >= max)
                             break;
                     }
@@ -726,7 +720,9 @@ namespace IngameScript
                 _messages["Stop Drones"] = new List<string>();
             }
             else
+            {
                 _messages["Stop Drones"].Clear();
+            }
 
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
@@ -1042,7 +1038,7 @@ namespace IngameScript
                                         var label = content.Key;
                                         var blockName = content.Value.ToLower();
 
-                                        var groups = new Dictionary<VolumeObject.VolumeTypes, List<VolumeObject>>();
+                                        var objects = new List<VolumeObject>();
                                         foreach (var volumeObject in _volumes.Values)
                                         {
                                             if (!volumeObject.BlockName.ToLower().Contains(blockName))
@@ -1050,72 +1046,56 @@ namespace IngameScript
                                                 continue;
                                             }
 
-                                            if (!groups.ContainsKey(volumeObject.VolumeType))
-                                            {
-                                                groups[volumeObject.VolumeType] = new List<VolumeObject>();
-                                            }
-
-                                            groups[volumeObject.VolumeType].Add(volumeObject);
+                                            objects.Add(volumeObject);
                                         }
 
-                                        if (groups.Count > 0)
+                                        if (objects.Count > 0)
                                         {
-                                            var multiTypes = groups.Count > 1;
-                                            foreach (var volumeType in groups.Keys)
+                                            var sumObject = new VolumeObject(objects);
+                                            if (!sumObject.IsValid)
                                             {
-                                                var sumObject = new VolumeObject(groups[volumeType], volumeType);
-                                                if (!sumObject.IsValid)
+                                                continue;
+                                            }
+
+                                            var text = sumObject.CurrentPercent + "%";
+                                            Color? color = null;
+                                            if (configKey == ConfigsSections.DisplayVolumesRemained &&
+                                                sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
+                                            {
+                                                if (sumObject.RemainedVector ==
+                                                    VolumeObject.RemainedVectors.Plus)
                                                 {
-                                                    continue;
+                                                    color = Color.Green;
+                                                }
+                                                else if (sumObject.RemainedVector ==
+                                                         VolumeObject.RemainedVectors.Minus)
+                                                {
+                                                    color = Color.Red;
                                                 }
 
-                                                var lineLabel = label;
-                                                var text = sumObject.CurrentPercent + "%";
-                                                if (multiTypes)
+                                                if (sumObject.Remained > 2)
                                                 {
-                                                    lineLabel += " (" + VolumeTypeToString(volumeType) + ")";
-                                                }
+                                                    var time = SecondsToString(sumObject.Remained);
+                                                    text += " (";
 
-                                                Color? color = null;
-                                                if (configKey == ConfigsSections.DisplayVolumesRemained &&
-                                                    sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
-                                                {
-                                                    if (sumObject.RemainedVector ==
-                                                        VolumeObject.RemainedVectors.Plus)
+                                                    if (sumObject.RemainedVector == VolumeObject.RemainedVectors.Plus)
                                                     {
-                                                        color = Color.Green;
+                                                        text += "+";
                                                     }
                                                     else if (sumObject.RemainedVector ==
                                                              VolumeObject.RemainedVectors.Minus)
                                                     {
-                                                        color = Color.Red;
+                                                        text += "-";
                                                     }
 
-                                                    if (sumObject.Remained > 2)
-                                                    {
-                                                        var time = SecondsToString(sumObject.Remained);
-                                                        text += " (";
-                                                        if (sumObject.RemainedVector ==
-                                                            VolumeObject.RemainedVectors.Plus)
-                                                        {
-                                                            text += "+";
-                                                        }
-                                                        else if (sumObject.RemainedVector ==
-                                                                 VolumeObject.RemainedVectors.Minus)
-                                                        {
-                                                            text += "-";
-                                                        }
-
-                                                        text += time + ")";
-                                                    }
+                                                    text += time + ")";
                                                 }
-
-                                                displayObject.AddLine(
-                                                    lineLabel + ": " + text,
-                                                    DisplayObject.TextSprite(lineLabel),
-                                                    DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
-                                                );
                                             }
+
+                                            displayObject.AddLine(label + ": " + text,
+                                                DisplayObject.TextSprite(label),
+                                                DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
+                                            );
 
                                             continue;
                                         }
@@ -1247,7 +1227,9 @@ namespace IngameScript
                 foreach (var entry in _messages)
                 {
                     if (entry.Value.Count == 0)
+                    {
                         continue;
+                    }
 
                     displayData.Add(entry.Key + ": ");
                     displayData.AddRange(entry.Value.Select(message => "   " + message));
@@ -1297,6 +1279,14 @@ namespace IngameScript
                     _items.TransferFromInventory(inventory);
                 }
             }
+        }
+
+        private void ActionScan()
+        {
+            const string title = "[" + ConfigsSections.CustomItems + "]";
+            var result = ItemsManager.ScanCustomItems(GridTerminalSystem, ScanPrefix, title);
+
+            _messages["Scan Result"] = result;
         }
 
         #endregion
@@ -1382,7 +1372,16 @@ namespace IngameScript
                 new List<ConfigObject> { configDefault, configCurrent });
 
             _globalConfig = configNew;
-            Me.CustomData = ConfigsHelper.ToCustomData(configNew, ";Crowigor's Base Manager");
+
+            var customData = new List<string> { ConfigsHelper.ToCustomData(configNew) };
+
+            var customItems = ConfigObject.Parse(ConfigsSections.CustomItems, Me.CustomData);
+            if (customItems != null)
+            {
+                customData.Add(ConfigsHelper.ToCustomData(customItems));
+            }
+
+            Me.CustomData = string.Join("\n\n", customData.ToArray());
         }
 
         private static string SecondsToString(double seconds)
@@ -1391,23 +1390,19 @@ namespace IngameScript
             return $"{(int)time.TotalHours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
         }
 
-        private static string VolumeTypeToString(VolumeObject.VolumeTypes type)
+        private void AddDebug(string message)
         {
-            if (type == VolumeObject.VolumeTypes.None)
+            if (_messages == null)
             {
-                return "";
+                _messages = new Dictionary<string, List<string>>();
             }
 
-
-            var dictionary = new Dictionary<VolumeObject.VolumeTypes, string>
+            if (!_messages.ContainsKey("Debug"))
             {
-                { VolumeObject.VolumeTypes.None, "None" },
-                { VolumeObject.VolumeTypes.Battery, "Battery" },
-                { VolumeObject.VolumeTypes.Container, "Container" },
-                { VolumeObject.VolumeTypes.Tank, "Tank" },
-            };
+                _messages["Debug"] = new List<string>();
+            }
 
-            return dictionary[type];
+            _messages["Debug"].Add(message);
         }
 
         #endregion;

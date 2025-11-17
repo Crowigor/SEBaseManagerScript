@@ -6,12 +6,12 @@ namespace IngameScript
 {
     partial class Program
     {
-        public const string RootConfigSectionName = "ROOT CONFIG SECTION";
-        public const string SectionIndexSeparator = "::_";
+        private const string RootConfigSectionName = "ROOT CONFIG SECTION";
+        private const string SectionIndexSeparator = "::_";
 
         public class ConfigObject
         {
-            public string Section;
+            public readonly string Section;
             public readonly Dictionary<string, string> Data;
 
             public ConfigObject(string section, Dictionary<string, string> data = null)
@@ -48,6 +48,11 @@ namespace IngameScript
                 return result;
             }
 
+            public string DataToString()
+            {
+                return string.Join("\n", ToStringList());
+            }
+
             public static ConfigObject Parse(string section, string data = "")
             {
                 if (string.IsNullOrEmpty(section) || !data.Contains(section))
@@ -82,7 +87,9 @@ namespace IngameScript
 
                 var lines = data.Split('\n');
                 if (lines.Length == 0)
+                {
                     return result;
+                }
 
                 var section = RootConfigSectionName;
                 var index = 1;
@@ -90,7 +97,7 @@ namespace IngameScript
                 foreach (var line in data.Split('\n'))
                 {
                     var sectionContent = line.Trim();
-                    if (sectionContent.StartsWith("#"))
+                    if (sectionContent.StartsWith("#") || sectionContent.StartsWith(";"))
                     {
                         continue;
                     }
@@ -161,7 +168,9 @@ namespace IngameScript
                 var key = lineParts[0].Trim();
                 string value = null;
                 if (lineParts.Length == 2)
+                {
                     value = lineParts[1].Trim();
+                }
 
                 return new KeyValuePair<string, string>(key, value);
             }

@@ -18,6 +18,7 @@ namespace IngameScript
                 Battery,
                 Container,
                 Tank,
+                Group
             }
 
             public enum RemainedVectors
@@ -49,7 +50,7 @@ namespace IngameScript
                 IsValid = true;
             }
 
-            public VolumeObject(List<VolumeObject> objects, VolumeTypes volumeType)
+            public VolumeObject(List<VolumeObject> objects, VolumeTypes volumeType = VolumeTypes.Group)
             {
                 int count = 0;
 
@@ -62,13 +63,12 @@ namespace IngameScript
 
                 foreach (var volumeObject in objects)
                 {
-                    if (volumeObject.VolumeType != volumeType)
+                    if (volumeType != VolumeTypes.Group && volumeObject.VolumeType != volumeType)
                     {
                         continue;
                     }
 
                     count++;
-
 
                     sumCurrentTime += volumeObject.CurrentTime;
                     sumLastTime += volumeObject.LastTime;
@@ -81,6 +81,7 @@ namespace IngameScript
                 if (count == 0)
                 {
                     IsValid = false;
+
                     return;
                 }
 

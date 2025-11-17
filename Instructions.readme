@@ -4,6 +4,7 @@ by Crowigor
 
 Tags for custom data
 [CBM:GC] - Global Config
+[CBM:CI] - Custom Items
 [CBM:DC] - Display Config
 [CBM:IM] - Inventory Manager
 [CBM:SC] - Special Containers
@@ -17,3 +18,6 @@ Tags for custom data
 [CBM:DL] - Display Items Limits
 [CBM:DV] - Display Blocks Volumes
 [CBM:DVR] - Display Blocks Volumes with Remained vector and timers
+
+Blocks names contains
+CBM-SCAN - Blocks for scan new custom items
