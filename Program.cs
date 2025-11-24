@@ -731,15 +731,21 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.StopDrones))
+                {
                     continue;
+                }
 
                 var connector = (IMyShipConnector)terminalBlock;
                 if (connector.Status != MyShipConnectorStatus.Connected)
+                {
                     continue;
+                }
 
                 var config = ConfigObject.Parse(ConfigsSections.StopDrones, connector.CustomData);
                 if (config == null)
+                {
                     continue;
+                }
 
                 var droneBlocksName = config.Get("DroneBlocksName");
                 var baseContainersName = config.Get("BaseContainersName");
@@ -769,30 +775,22 @@ namespace IngameScript
                 }
 
                 var blockActive = true;
-                float current = 0;
-                float total = 0;
-                foreach (var container in _blocks.GetBlocks(BlocksManager.BlockType.Container))
-                {
-                    if (baseContainersName != null && !container.CustomName.Contains(baseContainersName))
-                        continue;
-                    var inventory = container.GetInventory(0);
-
-                    current += (float)inventory.CurrentVolume;
-                    total += (float)inventory.MaxVolume;
-                }
-
+                var volumeObject = new VolumeObject(_volumes.Values.ToList(), baseContainersName);
                 var maxConfig = config.Get("BaseContainersMaxVolume",
                     _globalConfig.Get("SD:BaseContainersMaxVolume", "90%"));
                 var percent = maxConfig.Contains("%");
                 var max = (float)MyFixedPoint.DeserializeString(maxConfig.Replace("%", ""));
                 if (percent)
                 {
-                    var calc = current / total * 100;
-                    if (calc >= max)
+                    if (volumeObject.CurrentPercent >= max)
+                    {
                         blockActive = false;
+                    }
                 }
-                else if (current >= total)
+                else if (volumeObject.CurrentVolume >= max)
+                {
                     blockActive = false;
+                }
 
                 foreach (var block in connectedBlocks)
                 {
