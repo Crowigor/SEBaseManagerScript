@@ -1043,67 +1043,53 @@ namespace IngameScript
                                         var label = content.Key;
                                         var blockName = content.Value.ToLower();
 
-                                        var objects = new List<VolumeObject>();
-                                        foreach (var volumeObject in _volumes.Values)
+                                        var sumObject = new VolumeObject(_volumes.Values.ToList(), blockName);
+                                        if (!sumObject.IsValid)
                                         {
-                                            if (!volumeObject.BlockName.ToLower().Contains(blockName))
-                                            {
-                                                continue;
-                                            }
-
-                                            objects.Add(volumeObject);
+                                            continue;
                                         }
 
-                                        if (objects.Count > 0)
+                                        var text = sumObject.CurrentPercent + "%";
+                                        Color? color = null;
+                                        if (configKey == ConfigsSections.DisplayVolumesRemained &&
+                                            sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
                                         {
-                                            var sumObject = new VolumeObject(objects);
-                                            if (!sumObject.IsValid)
+                                            if (sumObject.RemainedVector ==
+                                                VolumeObject.RemainedVectors.Plus)
                                             {
-                                                continue;
+                                                color = Color.Green;
+                                            }
+                                            else if (sumObject.RemainedVector ==
+                                                     VolumeObject.RemainedVectors.Minus)
+                                            {
+                                                color = Color.Red;
                                             }
 
-                                            var text = sumObject.CurrentPercent + "%";
-                                            Color? color = null;
-                                            if (configKey == ConfigsSections.DisplayVolumesRemained &&
-                                                sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
+                                            if (sumObject.Remained > 2)
                                             {
-                                                if (sumObject.RemainedVector ==
-                                                    VolumeObject.RemainedVectors.Plus)
+                                                var time = SecondsToString(sumObject.Remained);
+                                                text += " (";
+
+                                                if (sumObject.RemainedVector == VolumeObject.RemainedVectors.Plus)
                                                 {
-                                                    color = Color.Green;
+                                                    text += "+";
                                                 }
                                                 else if (sumObject.RemainedVector ==
                                                          VolumeObject.RemainedVectors.Minus)
                                                 {
-                                                    color = Color.Red;
+                                                    text += "-";
                                                 }
 
-                                                if (sumObject.Remained > 2)
-                                                {
-                                                    var time = SecondsToString(sumObject.Remained);
-                                                    text += " (";
-
-                                                    if (sumObject.RemainedVector == VolumeObject.RemainedVectors.Plus)
-                                                    {
-                                                        text += "+";
-                                                    }
-                                                    else if (sumObject.RemainedVector ==
-                                                             VolumeObject.RemainedVectors.Minus)
-                                                    {
-                                                        text += "-";
-                                                    }
-
-                                                    text += time + ")";
-                                                }
+                                                text += time + ")";
                                             }
-
-                                            displayObject.AddLine(label + ": " + text,
-                                                DisplayObject.TextSprite(label),
-                                                DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
-                                            );
-
-                                            continue;
                                         }
+
+                                        displayObject.AddLine(label + ": " + text,
+                                            DisplayObject.TextSprite(label),
+                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
+                                        );
+
+                                        continue;
                                     }
                                 }
 
@@ -1302,13 +1288,14 @@ namespace IngameScript
         private void ActionPrintItems()
         {
             const string title = "[" + ConfigsSections.CustomItems + "]";
-         
+
             var result = ItemsManager.PrintItems(_items ?? new ItemsManager(), GridTerminalSystem, PrintPrefix, title);
 
             if (_messages == null)
             {
                 _messages = new Dictionary<string, List<string>>();
             }
+
             _messages["Print Result"] = result;
         }
 

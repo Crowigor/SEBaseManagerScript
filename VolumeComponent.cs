@@ -50,8 +50,11 @@ namespace IngameScript
                 IsValid = true;
             }
 
-            public VolumeObject(List<VolumeObject> objects, VolumeTypes volumeType = VolumeTypes.Group)
+            public VolumeObject(List<VolumeObject> objects, string blockName = "",
+                VolumeTypes volumeType = VolumeTypes.Group)
             {
+                blockName = string.IsNullOrEmpty(blockName) ? "" : blockName.ToLower();
+
                 int count = 0;
 
                 double sumCurrentTime = 0;
@@ -64,6 +67,11 @@ namespace IngameScript
                 foreach (var volumeObject in objects)
                 {
                     if (volumeType != VolumeTypes.Group && volumeObject.VolumeType != volumeType)
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(blockName) && !volumeObject.BlockName.ToLower().Contains(blockName))
                     {
                         continue;
                     }
