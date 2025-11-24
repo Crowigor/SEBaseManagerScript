@@ -36,11 +36,11 @@ namespace IngameScript
             public const string DisplayVolumesRemained = "CBM:DVR";
 
             public static readonly List<string> Displays = new List<string>
-                { DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes, DisplayVolumesRemained };
+                { DisplayConfig, DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes, DisplayVolumesRemained };
         }
 
         private const string ScanPrefix = "CBM-SCAN";
-        private const string Debug = "DEBUG";
+        private const string PrintPrefix = "CBM-PRINT";
 
         private readonly TasksManager _tasks;
         private BlocksManager _blocks;
@@ -102,7 +102,11 @@ namespace IngameScript
             }
             else if (argument.StartsWith("scan"))
             {
-                ActionScan();
+                ActionScanItems();
+            }
+            else if (argument.StartsWith("print"))
+            {
+                ActionPrintItems();
             }
         }
 
@@ -938,7 +942,8 @@ namespace IngameScript
                         foreach (var configSection in configs)
                         {
                             var configKey = ConfigsHelper.RemoveSectionIndex(configSection.Key);
-                            if (!ConfigsSections.Displays.Any(key => configKey.Contains(key))
+                            if (!ConfigsSections.Displays.Any(key =>
+                                    key != ConfigsSections.DisplayConfig && configKey.Contains(key))
                                 || configSection.Value.Count == 0)
                             {
                                 continue;
@@ -1281,12 +1286,30 @@ namespace IngameScript
             }
         }
 
-        private void ActionScan()
+        private void ActionScanItems()
         {
             const string title = "[" + ConfigsSections.CustomItems + "]";
             var result = ItemsManager.ScanCustomItems(GridTerminalSystem, ScanPrefix, title);
 
+            if (_messages == null)
+            {
+                _messages = new Dictionary<string, List<string>>();
+            }
+
             _messages["Scan Result"] = result;
+        }
+
+        private void ActionPrintItems()
+        {
+            const string title = "[" + ConfigsSections.CustomItems + "]";
+         
+            var result = ItemsManager.PrintItems(_items ?? new ItemsManager(), GridTerminalSystem, PrintPrefix, title);
+
+            if (_messages == null)
+            {
+                _messages = new Dictionary<string, List<string>>();
+            }
+            _messages["Print Result"] = result;
         }
 
         #endregion

@@ -13,8 +13,8 @@ namespace IngameScript
     {
         public class ItemsManager
         {
-            private const string CustomItemsPrefix = "CM_CI";
-            private const string UnknownCustomItem = "UNKNOWN_ITEM";
+            public const string CustomItemsPrefix = "CM_CI";
+            public const string UnknownCustomItem = "UNKNOWN_ITEM";
 
             private readonly Dictionary<string, ItemObject> _storage;
             private readonly Dictionary<string, string> _aliases;
@@ -231,14 +231,14 @@ namespace IngameScript
             {
                 var messages = new List<string>
                 {
-                    "[INFO] Starting Custom items scanner starting."
+                    "INFO - Starting Custom items scanner."
                 };
 
                 var blocks = new List<IMyTerminalBlock>();
                 gridTerminalSystem.SearchBlocksOfName(blocksName, blocks);
                 if (blocks.Count == 0)
                 {
-                    messages.Add("[ERROR] Blocks with `" + blocksName + "` not found!");
+                    messages.Add("ERROR - Blocks with `" + blocksName + "` not found!");
 
                     return messages;
                 }
@@ -297,27 +297,27 @@ namespace IngameScript
 
                 if (display == null)
                 {
-                    messages.Add("[ERROR] Display with `" + blocksName + "` not found");
+                    messages.Add("ERROR - Display with `" + blocksName + "` not found");
 
                     return messages;
                 }
 
                 if (itemsType.Count == 0)
                 {
-                    messages.Add("[WARNING] New Items not found");
+                    messages.Add("WARNING - New Items not found");
                 }
                 else
                 {
-                    messages.Add("[INFO] Find " + itemsType.Count + " new Item(s)");
+                    messages.Add("INFO - Find " + itemsType.Count + " new Item(s)");
                 }
 
                 if (blueprintsType.Count == 0)
                 {
-                    messages.Add("[WARNING] New Blueprints not found");
+                    messages.Add("WARNING - New Blueprints not found");
                 }
                 else
                 {
-                    messages.Add("[INFO] Find " + blueprintsType.Count + " new Blueprint(s)");
+                    messages.Add("INFO - Find " + blueprintsType.Count + " new Blueprint(s)");
                 }
 
                 if (blueprintsType.Count == 0 && itemsType.Count == 0)
@@ -325,10 +325,9 @@ namespace IngameScript
                     return messages;
                 }
 
-                var lines = new List<string>();
+                var lines = new List<string> { title };
                 var blueprintsFind = new List<string>();
 
-                lines.Add(title);
                 if (itemsType.Count > 0)
                 {
                     foreach (var type in itemsType.Values)
@@ -370,7 +369,57 @@ namespace IngameScript
 
                 display.ContentType = ContentType.TEXT_AND_IMAGE;
                 display.WriteText(string.Join("\n", lines.ToArray()));
-                messages.Add("[SUCCESS] Result add to " + display.CustomName);
+                messages.Add("SUCCESS - Result add to " + display.CustomName);
+
+                return messages;
+            }
+
+            public static List<string> PrintItems(ItemsManager manager,
+                IMyGridTerminalSystem gridTerminalSystem, string blocksName = "PrintItems",
+                string title = "[All Items]")
+            {
+                var messages = new List<string>
+                {
+                    "INFO - Starting print manager items."
+                };
+
+                var blocks = new List<IMyTerminalBlock>();
+                gridTerminalSystem.SearchBlocksOfName(blocksName, blocks);
+                if (blocks.Count == 0)
+                {
+                    messages.Add("ERROR - Blocks with `" + blocksName + "` not found!");
+
+                    return messages;
+                }
+
+                IMyTextPanel display = null;
+                foreach (var block in blocks)
+                {
+                    var panel = block as IMyTextPanel;
+                    if (panel != null)
+                    {
+                        display = panel;
+                    }
+                }
+
+                if (display == null)
+                {
+                    messages.Add("ERROR - Display with `" + blocksName + "` not found");
+
+                    return messages;
+                }
+
+                var lines = new List<string> { title };
+                var list = manager.GetList();
+                messages.Add("INFO - Find " + list.Count + " items");
+                foreach (var itemObject in list)
+                {
+                    lines.AddRange(itemObject.ToStringList());
+                }
+                
+                display.ContentType = ContentType.TEXT_AND_IMAGE;
+                display.WriteText(string.Join("\n", lines.ToArray()));
+                messages.Add("SUCCESS - Result add to " + display.CustomName);
 
                 return messages;
             }
@@ -412,7 +461,12 @@ namespace IngameScript
             public void UpdateAliases()
             {
                 Aliases = new List<string>
-                    { Selector.ToLower(), Name.ToLower(), Localization.ToLower(), Type.ToString().ToLower() };
+                {
+                    Selector.ToLower(),
+                    Name.ToLower(),
+                    Localization.ToLower(),
+                    Type.ToString().ToLower(),
+                };
 
                 if (Blueprints.Count <= 0)
                 {
@@ -443,9 +497,13 @@ namespace IngameScript
             public void ClearAmount()
             {
                 if (Amounts != null)
+                {
                     Amounts.Clear();
+                }
                 else
+                {
                     Amounts = new ItemAmountsObject();
+                }
             }
 
             public void ClearInventories()
@@ -463,6 +521,25 @@ namespace IngameScript
                     return;
 
                 InventoryHelper.TransferToInventories(inventoryItem, sourceInventory, Inventories, amount);
+            }
+
+            public List<string> ToStringList()
+            {
+                var lines = new List<string>();
+                if (Blueprints.Count == 0)
+                {
+                    lines.Add(string.Join(":", ItemsManager.CustomItemsPrefix, Type.ToString(), Name, Localization));
+
+                    return lines;
+                }
+
+                foreach (var blueprint in Blueprints)
+                {
+                    lines.Add(string.Join(":", ItemsManager.CustomItemsPrefix, Type.ToString(), Name, Localization,
+                        blueprint.Key.ToString(), blueprint.Value));
+                }
+
+                return lines;
             }
         }
 
