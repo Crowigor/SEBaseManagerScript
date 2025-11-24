@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Sandbox.Game.GameSystems;
 using VRage;
+using VRage.Game;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
 using VRage.Profiler;
@@ -19,6 +20,7 @@ namespace IngameScript
         public static class ConfigsSections
         {
             public const string GlobalConfig = "CBM:GC";
+            public const string CustomItems = "CBM:CI";
             public const string DisplayConfig = "CBM:DC";
             public const string InventoryManager = "CBM:IM";
             public const string SpecialContainer = "CBM:SC";
@@ -34,13 +36,11 @@ namespace IngameScript
             public const string DisplayVolumesRemained = "CBM:DVR";
 
             public static readonly List<string> Displays = new List<string>
-                { DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes, DisplayVolumesRemained };
+                { DisplayConfig, DisplayStatus, DisplayItems, DisplayLimits, DisplayVolumes, DisplayVolumesRemained };
         }
 
-        private readonly Dictionary<string, string> _legacyReplace = new Dictionary<string, string>
-        {
-            { "DronBlocksName", "DroneBlocksName" }
-        };
+        private const string ScanPrefix = "CBM-SCAN";
+        private const string PrintPrefix = "CBM-PRINT";
 
         private readonly TasksManager _tasks;
         private BlocksManager _blocks;
@@ -73,16 +73,6 @@ namespace IngameScript
             // Run Initialization
             TaskInitialization();
 
-            // Legacy replace
-            foreach (var block in _blocks.GetBlocks())
-            {
-                foreach (var replace in _legacyReplace)
-                {
-                    if (block.CustomData.Contains(replace.Key))
-                        block.CustomData = block.CustomData.Replace(replace.Key, replace.Value);
-                }
-            }
-
             // Set update rate
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
@@ -93,6 +83,7 @@ namespace IngameScript
             {
                 _tasks.Run();
                 _time += Runtime.TimeSinceLastRun.TotalSeconds;
+
                 return;
             }
 
@@ -110,6 +101,14 @@ namespace IngameScript
             {
                 ActionClearInventories(argument);
             }
+            else if (argument.StartsWith("scan"))
+            {
+                ActionScanItems();
+            }
+            else if (argument.StartsWith("print"))
+            {
+                ActionPrintItems();
+            }
         }
 
         #endregion
@@ -118,6 +117,15 @@ namespace IngameScript
 
         private void TaskInitialization()
         {
+            if (_messages == null)
+            {
+                _messages = new Dictionary<string, List<string>>();
+            }
+            else
+            {
+                _messages.Clear();
+            }
+
             ConfigureMeDisplay();
             CheckGlobalConfig();
             var ignoreTypes = new List<BlocksManager.BlockType>
@@ -136,7 +144,7 @@ namespace IngameScript
 
             if (_items == null)
             {
-                _items = new ItemsManager();
+                _items = new ItemsManager(ItemsManager.GetCustomItemsFromString(Me.CustomData));
             }
             else
             {
@@ -153,27 +161,22 @@ namespace IngameScript
                 _volumes = new Dictionary<long, VolumeObject>();
             }
 
-            if (_messages == null)
-            {
-                _messages = new Dictionary<string, List<string>>();
-            }
-            else
-            {
-                _messages.Clear();
-            }
-
             // Add inventories to items
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTank))
             {
                 if (!terminalBlock.CustomData.Contains(ConfigsSections.InventoryManager))
+                {
                     continue;
+                }
 
                 var config = ConfigObject.Parse(ConfigsSections.InventoryManager, terminalBlock.CustomData);
                 foreach (var key in config.Data.Keys.ToList())
                 {
                     var item = _items.GetItem(key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     item.Inventories.Add(terminalBlock.GetInventory(0));
                     _items.UpdateItem(item);
@@ -190,7 +193,9 @@ namespace IngameScript
                 {
                     var item = _items.GetItem(key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     item.Inventories.Add(terminalBlock.GetInventory(0));
                     _items.UpdateItem(item);
@@ -202,7 +207,9 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.TextSurfaceProvider))
             {
                 if (!ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
+                {
                     continue;
+                }
 
                 var provider = terminalBlock as IMyTextSurfaceProvider;
                 if (provider == null)
@@ -216,7 +223,7 @@ namespace IngameScript
                     continue;
                 }
 
-                for (int index = 0; index < count; index++)
+                for (var index = 0; index < count; index++)
                 {
                     var config = GetDisplayConfig(terminalBlock, index);
                     var selector = terminalBlock.GetId() + ":" + index;
@@ -225,8 +232,8 @@ namespace IngameScript
                     {
                         delay = 1;
                     }
-                    else if (GetDisplayConfigfSection(terminalBlock, ConfigsSections.DisplayVolumesRemained, index) !=
-                             null)
+                    else if (GetDisplayConfigfSection(terminalBlock,
+                                 ConfigsSections.DisplayVolumesRemained, index) != null)
                     {
                         delay = 3;
                     }
@@ -311,7 +318,9 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks())
             {
                 if (!terminalBlock.IsFunctional)
+                {
                     continue;
+                }
 
                 if (terminalBlock.InventoryCount > 0)
                 {
@@ -319,18 +328,24 @@ namespace IngameScript
                     {
                         var inventory = terminalBlock.GetInventory(i);
                         if (inventory == null)
+                        {
                             continue;
+                        }
 
                         var items = new List<MyInventoryItem>();
                         inventory.GetItems(items);
                         if (items.Count <= 0)
+                        {
                             continue;
+                        }
 
                         foreach (var item in items)
                         {
                             var find = _items.GetItem(item.Type.ToString());
                             if (find == null)
+                            {
                                 continue;
+                            }
 
                             find.Amounts.Exist += item.Amount;
                             _items.UpdateItem(find);
@@ -342,7 +357,9 @@ namespace IngameScript
                 if (assembler == null) continue;
                 {
                     if (!assembler.IsWorking)
+                    {
                         continue;
+                    }
 
                     // Calculate  assembler queue
                     if (!assembler.IsQueueEmpty)
@@ -353,13 +370,19 @@ namespace IngameScript
                         {
                             var find = _items.GetItem(item.BlueprintId.ToString());
                             if (find == null)
+                            {
                                 continue;
+                            }
 
                             var amount = item.Amount * find.Blueprints[item.BlueprintId];
                             if (assembler.Mode == MyAssemblerMode.Assembly)
+                            {
                                 find.Amounts.Assembling += amount;
+                            }
                             else if (assembler.Mode == MyAssemblerMode.Disassembly)
+                            {
                                 find.Amounts.Disassembling += amount;
+                            }
                         }
                     }
 
@@ -371,12 +394,18 @@ namespace IngameScript
                         {
                             var config = ConfigObject.Parse(ConfigsSections.ItemsAssembling, assembler.CustomData);
                             if (config == null)
+                            {
                                 continue;
+                            }
 
                             foreach (var entry in config.Data)
                             {
                                 var find = _items.GetItem(entry.Key);
-                                if (find == null) continue;
+                                if (find == null)
+                                {
+                                    continue;
+                                }
+
                                 if (find.Amounts.AssemblingQuota < 0)
                                 {
                                     find.Amounts.AssemblingQuota = 0;
@@ -391,16 +420,22 @@ namespace IngameScript
                             var config = ConfigObject.Parse(ConfigsSections.ItemsDisassembling,
                                 assembler.CustomData);
                             if (config == null)
+                            {
                                 continue;
+                            }
 
                             foreach (var entry in config.Data)
                             {
                                 var find = _items.GetItem(entry.Key);
                                 if (find == null)
+                                {
                                     continue;
+                                }
 
                                 if (find.Amounts.DisassemblingQuota < 0)
+                                {
                                     find.Amounts.DisassemblingQuota = 0;
+                                }
 
                                 find.Amounts.DisassemblingQuota += MyFixedPoint.DeserializeString(entry.Value);
                             }
@@ -447,15 +482,21 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Container))
             {
                 if (!terminalBlock.IsFunctional || !terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
+                {
                     continue;
+                }
 
                 var container = terminalBlock as IMyCargoContainer;
                 if (container == null)
+                {
                     continue;
+                }
 
                 var config = ConfigObject.Parse(ConfigsSections.SpecialContainer, container.CustomData);
                 if (config == null)
+                {
                     continue;
+                }
 
                 var inventory = container.GetInventory(0);
                 _items.TransferFromInventory(inventory);
@@ -464,15 +505,21 @@ namespace IngameScript
                 {
                     var item = _items.GetItem(entry.Key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     var needle = MyFixedPoint.DeserializeString(entry.Value);
                     if (needle == 0)
+                    {
                         continue;
+                    }
 
                     var current = inventory.GetItemAmount(item.Type);
                     if (current >= needle)
+                    {
                         continue;
+                    }
 
                     var quantity = needle - current;
                     InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), inventory, quantity);
@@ -489,11 +536,15 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks())
             {
                 if (!terminalBlock.IsFunctional || terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
+                {
                     continue;
+                }
 
                 var blockType = BlocksManager.GetBlockTypes(terminalBlock);
                 if (blockType.Intersect(ignoreBlockTypes).Any())
+                {
                     continue;
+                }
 
                 if (blockType.Contains(BlocksManager.BlockType.GasGenerator))
                 {
@@ -534,13 +585,18 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Assembler))
             {
                 if (!terminalBlock.IsWorking)
+                {
                     continue;
+                }
 
                 var assembler = (IMyAssembler)terminalBlock;
 
                 // Add items to quota
                 if (!assembler.IsWorking)
+                {
                     continue;
+                }
+
                 if (!assembler.CooperativeMode)
                 {
                     if (assembler.Mode == MyAssemblerMode.Assembly)
@@ -553,12 +609,16 @@ namespace IngameScript
                             {
                                 var item = _items.GetItem(entry.Key);
                                 if (item == null || item.Blueprints.Count <= 0)
+                                {
                                     continue;
+                                }
 
                                 foreach (var blueprint in item.Blueprints)
                                 {
                                     if (!assembler.CanUseBlueprint(blueprint.Key))
+                                    {
                                         continue;
+                                    }
 
                                     var need = MyFixedPoint.DeserializeString(entry.Value);
                                     var total = item.Amounts.Exist + item.Amounts.Assembling;
@@ -590,12 +650,16 @@ namespace IngameScript
                             {
                                 var item = _items.GetItem(entry.Key);
                                 if (item == null || item.Blueprints.Count <= 0)
+                                {
                                     continue;
+                                }
 
                                 foreach (var blueprint in item.Blueprints)
                                 {
                                     if (!assembler.CanUseBlueprint(blueprint.Key))
+                                    {
                                         continue;
+                                    }
 
                                     var value = entry.Value ?? "0";
 
@@ -626,32 +690,39 @@ namespace IngameScript
                 {
                     var queue = new List<MyProductionItem>();
                     assembler.GetQueue(queue);
-                    var max = 5;
+
+                    const int max = 5;
                     var current = 0;
                     foreach (var queueItem in queue)
                     {
                         var item = _items.GetItem(queueItem.BlueprintId.ToString());
                         if (item == null || item.Blueprints.Count <= 0)
+                        {
                             continue;
+                        }
 
                         foreach (var blueprint in item.Blueprints)
                         {
                             if (!assembler.CanUseBlueprint(blueprint.Key))
+                            {
                                 continue;
+                            }
 
                             MyFixedPoint quantity = queueItem.Amount * blueprint.Value;
                             var transfer = InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(),
                                 assembler.GetInventory(1), quantity);
-                            if (transfer != null && transfer > 0)
+                            if (transfer > 0)
                             {
                                 current++;
                             }
-                            
+
                             break;
                         }
-                        
+
                         if (current >= max)
+                        {
                             break;
+                        }
                     }
                 }
             }
@@ -677,10 +748,15 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Refinery))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
+                {
                     continue;
+                }
+
                 var refinery = terminalBlock as IMyRefinery;
                 if (refinery == null)
+                {
                     continue;
+                }
 
                 destinations.Add(refinery);
             }
@@ -695,14 +771,18 @@ namespace IngameScript
             {
                 if (terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
                     continue;
-                sources.Add(terminalBlock);
+                {
+                    sources.Add(terminalBlock);
+                }
             }
 
             foreach (var refinery in destinations)
             {
                 var config = ConfigObject.Parse(ConfigsSections.RefineryManager, refinery.CustomData);
                 if (config == null || config.Data.Keys.Count == 0)
+                {
                     continue;
+                }
 
                 var destinationInventory = refinery.GetInventory(0);
                 _items.TransferFromInventory(destinationInventory);
@@ -710,11 +790,15 @@ namespace IngameScript
                 {
                     var item = _items.GetItem(key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     InventoryHelper.TransferFromBlocks(item.Type, sources, destinationInventory);
                     if (destinationInventory.IsFull)
+                    {
                         break;
+                    }
                 }
             }
         }
@@ -726,34 +810,48 @@ namespace IngameScript
                 _messages["Stop Drones"] = new List<string>();
             }
             else
+            {
                 _messages["Stop Drones"].Clear();
+            }
 
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.StopDrones))
+                {
                     continue;
+                }
 
                 var connector = (IMyShipConnector)terminalBlock;
                 if (connector.Status != MyShipConnectorStatus.Connected)
+                {
                     continue;
+                }
 
                 var config = ConfigObject.Parse(ConfigsSections.StopDrones, connector.CustomData);
                 if (config == null)
+                {
                     continue;
+                }
 
                 var droneBlocksName = config.Get("DroneBlocksName");
                 var baseContainersName = config.Get("BaseContainersName");
 
                 string error = null;
                 if (string.IsNullOrEmpty(droneBlocksName))
+                {
                     error = "Empty DroneBlocksName";
+                }
+
                 if (string.IsNullOrEmpty(baseContainersName))
+                {
                     error = "Empty BaseContainersName";
+                }
 
                 if (!string.IsNullOrEmpty(error))
                 {
                     _messages["Stop Drones"].Add(connector.CustomName + ":");
-                    _messages["Stop Drones"].Add(error);
+                    _messages["Stop Drones"].Add("ERROR - " + error);
+
                     continue;
                 }
 
@@ -764,35 +862,28 @@ namespace IngameScript
                 if (connectedBlocks.Count == 0)
                 {
                     _messages["Stop Drones"].Add(connector.CustomName + ":");
-                    _messages["Stop Drones"].Add("Can't find drones blocks `" + droneBlocksName + "`");
+                    _messages["Stop Drones"].Add("INFO - Can't find drones blocks `" + droneBlocksName + "`");
+
                     continue;
                 }
 
                 var blockActive = true;
-                float current = 0;
-                float total = 0;
-                foreach (var container in _blocks.GetBlocks(BlocksManager.BlockType.Container))
-                {
-                    if (baseContainersName != null && !container.CustomName.Contains(baseContainersName))
-                        continue;
-                    var inventory = container.GetInventory(0);
-
-                    current += (float)inventory.CurrentVolume;
-                    total += (float)inventory.MaxVolume;
-                }
-
+                var volumeObject = new VolumeObject(_volumes.Values.ToList(), baseContainersName);
                 var maxConfig = config.Get("BaseContainersMaxVolume",
                     _globalConfig.Get("SD:BaseContainersMaxVolume", "90%"));
                 var percent = maxConfig.Contains("%");
                 var max = (float)MyFixedPoint.DeserializeString(maxConfig.Replace("%", ""));
                 if (percent)
                 {
-                    var calc = current / total * 100;
-                    if (calc >= max)
+                    if (volumeObject.CurrentPercent >= max)
+                    {
                         blockActive = false;
+                    }
                 }
-                else if (current >= total)
+                else if (volumeObject.CurrentVolume >= max)
+                {
                     blockActive = false;
+                }
 
                 foreach (var block in connectedBlocks)
                 {
@@ -819,11 +910,15 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.ItemsCollecting))
+                {
                     continue;
+                }
 
                 var connector = (IMyShipConnector)terminalBlock;
                 if (connector.Status != MyShipConnectorStatus.Connected)
+                {
                     continue;
+                }
 
                 var connectedConnector = connector.OtherConnector;
                 var connectedBlocks = new List<IMyTerminalBlock>();
@@ -844,12 +939,18 @@ namespace IngameScript
                         var itemKey = ignore ? key.TrimStart('!') : key;
                         var item = _items.GetItem(itemKey);
                         if (item == null)
+                        {
                             continue;
+                        }
 
                         if (ignore)
+                        {
                             ignoreTypes.Add(item.Type);
+                        }
                         else
+                        {
                             collectTypes.Add(item.Type);
+                        }
                     }
                 }
 
@@ -858,7 +959,9 @@ namespace IngameScript
                     if (block.CustomName.Contains("!" + ConfigsSections.ItemsCollecting)
                         || block.CustomData.Contains("!" + ConfigsSections.ItemsCollecting)
                         || !BlocksManager.GetBlockTypes(block).Intersect(itemsCollectingBlockTypes).Any())
+                    {
                         continue;
+                    }
 
                     for (var i = 0; i < block.InventoryCount; i++)
                     {
@@ -868,10 +971,14 @@ namespace IngameScript
                         foreach (var item in sourceItems)
                         {
                             if (collectTypes.Count != 0 && !collectTypes.Contains(item.Type))
+                            {
                                 continue;
+                            }
 
                             if (ignoreTypes.Count > 0 && ignoreTypes.Contains(item.Type))
+                            {
                                 continue;
+                            }
 
                             InventoryHelper.TransferItem(item, sourceInventory, destinationInventory);
                             _items.TransferFromInventory(destinationInventory);
@@ -890,7 +997,9 @@ namespace IngameScript
 
                 if (terminalBlock == null || !terminalBlock.IsWorking ||
                     !ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
+                {
                     continue;
+                }
 
                 var config = GetDisplayConfig(terminalBlock, displayObject.SurfaceIndex);
                 var language = config.Get("language");
@@ -925,7 +1034,9 @@ namespace IngameScript
                         foreach (var messageSection in _messages)
                         {
                             if (messageSection.Value.Count == 0)
+                            {
                                 continue;
+                            }
 
                             displayObject.AddBlankLine();
                             displayObject.AddTextLine(messageSection.Key + ":");
@@ -942,8 +1053,8 @@ namespace IngameScript
                         foreach (var configSection in configs)
                         {
                             var configKey = ConfigsHelper.RemoveSectionIndex(configSection.Key);
-                            if (!ConfigsSections.Displays.Any(key => configKey.Contains(key))
-                                || configSection.Value.Count == 0)
+                            if (configSection.Value.Count == 0 || !ConfigsSections.Displays.Any(key =>
+                                    key != ConfigsSections.DisplayConfig && configKey.Contains(key)))
                             {
                                 continue;
                             }
@@ -957,7 +1068,9 @@ namespace IngameScript
                                     configIndexString = "0";
                                 }
                                 else
+                                {
                                     continue;
+                                }
                             }
                             else
                             {
@@ -976,6 +1089,7 @@ namespace IngameScript
                                 if (string.IsNullOrEmpty(clear))
                                 {
                                     displayObject.AddBlankLine();
+
                                     continue;
                                 }
 
@@ -991,6 +1105,7 @@ namespace IngameScript
                                             DisplayObject.TextSprite(label),
                                             DisplayObject.TextSprite(text, TextAlignment.RIGHT)
                                         );
+
                                         continue;
                                     }
                                 }
@@ -1042,83 +1157,53 @@ namespace IngameScript
                                         var label = content.Key;
                                         var blockName = content.Value.ToLower();
 
-                                        var groups = new Dictionary<VolumeObject.VolumeTypes, List<VolumeObject>>();
-                                        foreach (var volumeObject in _volumes.Values)
+                                        var sumObject = new VolumeObject(_volumes.Values.ToList(), blockName);
+                                        if (!sumObject.IsValid)
                                         {
-                                            if (!volumeObject.BlockName.ToLower().Contains(blockName))
-                                            {
-                                                continue;
-                                            }
-
-                                            if (!groups.ContainsKey(volumeObject.VolumeType))
-                                            {
-                                                groups[volumeObject.VolumeType] = new List<VolumeObject>();
-                                            }
-
-                                            groups[volumeObject.VolumeType].Add(volumeObject);
-                                        }
-
-                                        if (groups.Count > 0)
-                                        {
-                                            var multiTypes = groups.Count > 1;
-                                            foreach (var volumeType in groups.Keys)
-                                            {
-                                                var sumObject = new VolumeObject(groups[volumeType], volumeType);
-                                                if (!sumObject.IsValid)
-                                                {
-                                                    continue;
-                                                }
-
-                                                var lineLabel = label;
-                                                var text = sumObject.CurrentPercent + "%";
-                                                if (multiTypes)
-                                                {
-                                                    lineLabel += " (" + VolumeTypeToString(volumeType) + ")";
-                                                }
-
-                                                Color? color = null;
-                                                if (configKey == ConfigsSections.DisplayVolumesRemained &&
-                                                    sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
-                                                {
-                                                    if (sumObject.RemainedVector ==
-                                                        VolumeObject.RemainedVectors.Plus)
-                                                    {
-                                                        color = Color.Green;
-                                                    }
-                                                    else if (sumObject.RemainedVector ==
-                                                             VolumeObject.RemainedVectors.Minus)
-                                                    {
-                                                        color = Color.Red;
-                                                    }
-
-                                                    if (sumObject.Remained > 2)
-                                                    {
-                                                        var time = SecondsToString(sumObject.Remained);
-                                                        text += " (";
-                                                        if (sumObject.RemainedVector ==
-                                                            VolumeObject.RemainedVectors.Plus)
-                                                        {
-                                                            text += "+";
-                                                        }
-                                                        else if (sumObject.RemainedVector ==
-                                                                 VolumeObject.RemainedVectors.Minus)
-                                                        {
-                                                            text += "-";
-                                                        }
-
-                                                        text += time + ")";
-                                                    }
-                                                }
-
-                                                displayObject.AddLine(
-                                                    lineLabel + ": " + text,
-                                                    DisplayObject.TextSprite(lineLabel),
-                                                    DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
-                                                );
-                                            }
-
                                             continue;
                                         }
+
+                                        var text = sumObject.CurrentPercent + "%";
+                                        Color? color = null;
+                                        if (configKey == ConfigsSections.DisplayVolumesRemained &&
+                                            sumObject.RemainedVector != VolumeObject.RemainedVectors.None)
+                                        {
+                                            if (sumObject.RemainedVector ==
+                                                VolumeObject.RemainedVectors.Plus)
+                                            {
+                                                color = Color.Green;
+                                            }
+                                            else if (sumObject.RemainedVector ==
+                                                     VolumeObject.RemainedVectors.Minus)
+                                            {
+                                                color = Color.Red;
+                                            }
+
+                                            if (sumObject.Remained > 2)
+                                            {
+                                                var time = SecondsToString(sumObject.Remained);
+                                                text += " (";
+
+                                                if (sumObject.RemainedVector == VolumeObject.RemainedVectors.Plus)
+                                                {
+                                                    text += "+";
+                                                }
+                                                else if (sumObject.RemainedVector ==
+                                                         VolumeObject.RemainedVectors.Minus)
+                                                {
+                                                    text += "-";
+                                                }
+
+                                                text += time + ")";
+                                            }
+                                        }
+
+                                        displayObject.AddLine(label + ": " + text,
+                                            DisplayObject.TextSprite(label),
+                                            DisplayObject.TextSprite(text, TextAlignment.RIGHT, color)
+                                        );
+
+                                        continue;
                                     }
                                 }
 
@@ -1159,7 +1244,9 @@ namespace IngameScript
                 if (border > 0)
                 {
                     foreach (var sprite in DisplayObject.GetSurfaceBorder(display, border, padding))
+                    {
                         frame.Add(sprite);
+                    }
 
                     positionLeft = viewport.X + border + padding * 2;
                     positionRight = viewport.X + viewport.Width - border - padding * 2;
@@ -1193,6 +1280,7 @@ namespace IngameScript
                     if (line.Count == 0)
                     {
                         positionTop += lineHeight;
+
                         continue;
                     }
 
@@ -1234,11 +1322,11 @@ namespace IngameScript
 
         private void TaskDisplayStatus()
         {
-            var displayData = new List<string>()
+            var displayData = new List<string>
             {
                 { "= Crowigor's Base Manager =" },
+                "Runtime: " + SecondsToString(_time)
             };
-            displayData.Add("Runtime: " + SecondsToString(_time));
             displayData.AddRange(_tasks.GetStatusText());
 
             if (_messages.Count > 0)
@@ -1247,7 +1335,9 @@ namespace IngameScript
                 foreach (var entry in _messages)
                 {
                     if (entry.Value.Count == 0)
+                    {
                         continue;
+                    }
 
                     displayData.Add(entry.Key + ": ");
                     displayData.AddRange(entry.Value.Select(message => "   " + message));
@@ -1270,8 +1360,10 @@ namespace IngameScript
                 if (!string.IsNullOrEmpty(argument))
                 {
                     var customName = terminalBlock.CustomName.ToLower();
-                    if (!customName.Contains(blockName))
+                    if (!customName.ToLower().Contains(blockName))
+                    {
                         continue;
+                    }
                 }
 
                 var assembler = terminalBlock as IMyAssembler;
@@ -1288,7 +1380,9 @@ namespace IngameScript
                 {
                     var customName = terminalBlock.CustomName.ToLower();
                     if (!customName.Contains(blockName))
+                    {
                         continue;
+                    }
                 }
 
                 for (var i = 0; i < terminalBlock.InventoryCount; i++)
@@ -1297,6 +1391,33 @@ namespace IngameScript
                     _items.TransferFromInventory(inventory);
                 }
             }
+        }
+
+        private void ActionScanItems()
+        {
+            const string title = "[" + ConfigsSections.CustomItems + "]";
+            var result = ItemsManager.ScanCustomItems(GridTerminalSystem, ScanPrefix, title);
+
+            if (_messages == null)
+            {
+                _messages = new Dictionary<string, List<string>>();
+            }
+
+            _messages["Scan Result"] = result;
+        }
+
+        private void ActionPrintItems()
+        {
+            const string title = "[" + ConfigsSections.CustomItems + "]";
+
+            var result = ItemsManager.PrintItems(_items ?? new ItemsManager(), GridTerminalSystem, PrintPrefix, title);
+
+            if (_messages == null)
+            {
+                _messages = new Dictionary<string, List<string>>();
+            }
+
+            _messages["Print Result"] = result;
         }
 
         #endregion
@@ -1382,7 +1503,16 @@ namespace IngameScript
                 new List<ConfigObject> { configDefault, configCurrent });
 
             _globalConfig = configNew;
-            Me.CustomData = ConfigsHelper.ToCustomData(configNew, ";Crowigor's Base Manager");
+
+            var customData = new List<string> { ConfigsHelper.ToCustomData(configNew) };
+
+            var customItems = ConfigObject.Parse(ConfigsSections.CustomItems, Me.CustomData);
+            if (customItems != null)
+            {
+                customData.Add(ConfigsHelper.ToCustomData(customItems));
+            }
+
+            Me.CustomData = string.Join("\n\n", customData.ToArray());
         }
 
         private static string SecondsToString(double seconds)
@@ -1391,23 +1521,19 @@ namespace IngameScript
             return $"{(int)time.TotalHours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
         }
 
-        private static string VolumeTypeToString(VolumeObject.VolumeTypes type)
+        private void AddDebug(string message)
         {
-            if (type == VolumeObject.VolumeTypes.None)
+            if (_messages == null)
             {
-                return "";
+                _messages = new Dictionary<string, List<string>>();
             }
 
-
-            var dictionary = new Dictionary<VolumeObject.VolumeTypes, string>
+            if (!_messages.ContainsKey("Debug"))
             {
-                { VolumeObject.VolumeTypes.None, "None" },
-                { VolumeObject.VolumeTypes.Battery, "Battery" },
-                { VolumeObject.VolumeTypes.Container, "Container" },
-                { VolumeObject.VolumeTypes.Tank, "Tank" },
-            };
+                _messages["Debug"] = new List<string>();
+            }
 
-            return dictionary[type];
+            _messages["Debug"].Add(message);
         }
 
         #endregion;

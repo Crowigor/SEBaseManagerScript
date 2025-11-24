@@ -73,7 +73,9 @@ namespace IngameScript
                 var current = _currentLine;
                 var result = current + limit;
                 if (_lines.Count - 1 < result)
+                {
                     result = 0;
+                }
 
                 _currentLine = result;
             }
@@ -224,7 +226,9 @@ namespace IngameScript
             {
                 var result = new List<MySprite>();
                 if (border <= 0)
+                {
                     return result;
+                }
 
                 var viewport = GetViewport(surface);
                 var outerRectSize = new Vector2(viewport.Width - 2 * padding, viewport.Height - 2 * padding);
@@ -260,7 +264,9 @@ namespace IngameScript
             {
                 var result = new List<MySprite>();
                 if (string.IsNullOrEmpty(title))
+                {
                     return result;
+                }
 
                 var viewport = GetViewport(surface);
                 var size = new Vector2(title.Length * 15 * fontSize, lineHeight);

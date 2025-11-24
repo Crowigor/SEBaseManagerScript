@@ -18,6 +18,7 @@ namespace IngameScript
                 Battery,
                 Container,
                 Tank,
+                Group
             }
 
             public enum RemainedVectors
@@ -28,7 +29,7 @@ namespace IngameScript
             }
 
             public long Selector;
-            public VolumeTypes VolumeType;
+            public readonly VolumeTypes VolumeType;
             public string BlockName;
             public double CurrentVolume;
             public double LastVolume;
@@ -38,7 +39,7 @@ namespace IngameScript
             public double LastTime;
             public double Remained;
             public RemainedVectors RemainedVector;
-            public bool IsValid { get; private set; }
+            public bool IsValid { get; }
 
             public VolumeObject(long selector, VolumeTypes volumeType, string blockName)
             {
@@ -49,8 +50,11 @@ namespace IngameScript
                 IsValid = true;
             }
 
-            public VolumeObject(List<VolumeObject> objects, VolumeTypes volumeType)
+            public VolumeObject(List<VolumeObject> objects, string blockName = "",
+                VolumeTypes volumeType = VolumeTypes.Group)
             {
+                blockName = string.IsNullOrEmpty(blockName) ? "" : blockName.ToLower();
+
                 int count = 0;
 
                 double sumCurrentTime = 0;
@@ -62,13 +66,17 @@ namespace IngameScript
 
                 foreach (var volumeObject in objects)
                 {
-                    if (volumeObject.VolumeType != volumeType)
+                    if (volumeType != VolumeTypes.Group && volumeObject.VolumeType != volumeType)
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(blockName) && !volumeObject.BlockName.ToLower().Contains(blockName))
                     {
                         continue;
                     }
 
                     count++;
-
 
                     sumCurrentTime += volumeObject.CurrentTime;
                     sumLastTime += volumeObject.LastTime;
@@ -81,6 +89,7 @@ namespace IngameScript
                 if (count == 0)
                 {
                     IsValid = false;
+
                     return;
                 }
 
