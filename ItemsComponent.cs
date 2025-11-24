@@ -117,7 +117,9 @@ namespace IngameScript
             public void UpdateItem(ItemObject item)
             {
                 if (item == null)
+                {
                     return;
+                }
 
                 _storage[item.Selector] = item;
             }
@@ -125,19 +127,25 @@ namespace IngameScript
             public void ClearInventories()
             {
                 foreach (var item in _storage.Values)
+                {
                     item.ClearInventories();
+                }
             }
 
             public void ClearAmounts()
             {
                 foreach (var item in _storage.Values)
+                {
                     item.ClearAmount();
+                }
             }
 
             public void TransferFromInventories(List<IMyInventory> inventories)
             {
                 foreach (var inventory in inventories)
+                {
                     TransferFromInventory(inventory);
+                }
             }
 
             public void TransferFromInventory(IMyInventory inventory)
@@ -333,16 +341,18 @@ namespace IngameScript
                     foreach (var type in itemsType.Values)
                     {
                         var subtype = type.SubtypeId;
-
                         var findBlueprints = false;
+
                         foreach (var blueprint in blueprintsType.Keys)
                         {
-                            if (blueprint.Contains(subtype))
+                            if (!blueprint.Contains(subtype))
                             {
-                                findBlueprints = true;
-                                blueprintsFind.Add(blueprint);
-                                lines.Add(string.Join(":", CustomItemsPrefix, type, subtype, subtype, blueprint, "1"));
+                                continue;
                             }
+
+                            findBlueprints = true;
+                            blueprintsFind.Add(blueprint);
+                            lines.Add(string.Join(":", CustomItemsPrefix, type, subtype, subtype, blueprint, "1"));
                         }
 
                         if (!findBlueprints)
@@ -409,14 +419,15 @@ namespace IngameScript
                     return messages;
                 }
 
-                var lines = new List<string> { title };
                 var list = manager.GetList();
                 messages.Add("INFO - Find " + list.Count + " items");
+
+                var lines = new List<string> { title };
                 foreach (var itemObject in list)
                 {
                     lines.AddRange(itemObject.ToStringList());
                 }
-                
+
                 display.ContentType = ContentType.TEXT_AND_IMAGE;
                 display.WriteText(string.Join("\n", lines.ToArray()));
                 messages.Add("SUCCESS - Result add to " + display.CustomName);
@@ -509,16 +520,22 @@ namespace IngameScript
             public void ClearInventories()
             {
                 if (Inventories != null)
+                {
                     Inventories.Clear();
+                }
                 else
+                {
                     Inventories = new List<IMyInventory>();
+                }
             }
 
             public void Transfer(MyInventoryItem inventoryItem, IMyInventory sourceInventory,
                 MyFixedPoint amount = new MyFixedPoint())
             {
                 if (Inventories.Count == 0)
+                {
                     return;
+                }
 
                 InventoryHelper.TransferToInventories(inventoryItem, sourceInventory, Inventories, amount);
             }
@@ -572,25 +589,35 @@ namespace IngameScript
                     if (DisassemblingQuota >= 0)
                     {
                         if (quota >= 0 && DisassemblingQuota < quota)
+                        {
                             quota = DisassemblingQuota;
+                        }
                         else if (quota < 0)
+                        {
                             quota = DisassemblingQuota;
+                        }
                     }
 
                     result += ValueToString(quota);
                 }
 
-                if (Assembling > 0 || Disassembling > 0)
+                if (Assembling <= 0 && Disassembling <= 0)
                 {
-                    result += " (";
-                    if (Assembling > 0)
-                        result += "+" + ValueToString(Assembling);
-
-                    if (Disassembling > 0)
-                        result += "0" + ValueToString(Disassembling);
-
-                    result += ")";
+                    return result;
                 }
+
+                result += " (";
+                if (Assembling > 0)
+                {
+                    result += "+" + ValueToString(Assembling);
+                }
+
+                if (Disassembling > 0)
+                {
+                    result += "0" + ValueToString(Disassembling);
+                }
+
+                result += ")";
 
                 return result;
             }
@@ -610,10 +637,14 @@ namespace IngameScript
                 var result = (double)value;
 
                 if (result >= 1000000)
+                {
                     return (result / 1000000.0).ToString("0.#") + "M";
+                }
 
                 if (result >= 1000)
+                {
                     return (result / 1000.0).ToString("0.#") + "K";
+                }
 
                 return result.ToString("0");
             }

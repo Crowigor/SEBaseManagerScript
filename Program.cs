@@ -83,6 +83,7 @@ namespace IngameScript
             {
                 _tasks.Run();
                 _time += Runtime.TimeSinceLastRun.TotalSeconds;
+
                 return;
             }
 
@@ -164,14 +165,18 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.GasTank))
             {
                 if (!terminalBlock.CustomData.Contains(ConfigsSections.InventoryManager))
+                {
                     continue;
+                }
 
                 var config = ConfigObject.Parse(ConfigsSections.InventoryManager, terminalBlock.CustomData);
                 foreach (var key in config.Data.Keys.ToList())
                 {
                     var item = _items.GetItem(key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     item.Inventories.Add(terminalBlock.GetInventory(0));
                     _items.UpdateItem(item);
@@ -188,7 +193,9 @@ namespace IngameScript
                 {
                     var item = _items.GetItem(key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     item.Inventories.Add(terminalBlock.GetInventory(0));
                     _items.UpdateItem(item);
@@ -200,7 +207,9 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.TextSurfaceProvider))
             {
                 if (!ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
+                {
                     continue;
+                }
 
                 var provider = terminalBlock as IMyTextSurfaceProvider;
                 if (provider == null)
@@ -214,7 +223,7 @@ namespace IngameScript
                     continue;
                 }
 
-                for (int index = 0; index < count; index++)
+                for (var index = 0; index < count; index++)
                 {
                     var config = GetDisplayConfig(terminalBlock, index);
                     var selector = terminalBlock.GetId() + ":" + index;
@@ -223,8 +232,8 @@ namespace IngameScript
                     {
                         delay = 1;
                     }
-                    else if (GetDisplayConfigfSection(terminalBlock, ConfigsSections.DisplayVolumesRemained, index) !=
-                             null)
+                    else if (GetDisplayConfigfSection(terminalBlock,
+                                 ConfigsSections.DisplayVolumesRemained, index) != null)
                     {
                         delay = 3;
                     }
@@ -309,7 +318,9 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks())
             {
                 if (!terminalBlock.IsFunctional)
+                {
                     continue;
+                }
 
                 if (terminalBlock.InventoryCount > 0)
                 {
@@ -317,18 +328,24 @@ namespace IngameScript
                     {
                         var inventory = terminalBlock.GetInventory(i);
                         if (inventory == null)
+                        {
                             continue;
+                        }
 
                         var items = new List<MyInventoryItem>();
                         inventory.GetItems(items);
                         if (items.Count <= 0)
+                        {
                             continue;
+                        }
 
                         foreach (var item in items)
                         {
                             var find = _items.GetItem(item.Type.ToString());
                             if (find == null)
+                            {
                                 continue;
+                            }
 
                             find.Amounts.Exist += item.Amount;
                             _items.UpdateItem(find);
@@ -340,7 +357,9 @@ namespace IngameScript
                 if (assembler == null) continue;
                 {
                     if (!assembler.IsWorking)
+                    {
                         continue;
+                    }
 
                     // Calculate  assembler queue
                     if (!assembler.IsQueueEmpty)
@@ -351,13 +370,19 @@ namespace IngameScript
                         {
                             var find = _items.GetItem(item.BlueprintId.ToString());
                             if (find == null)
+                            {
                                 continue;
+                            }
 
                             var amount = item.Amount * find.Blueprints[item.BlueprintId];
                             if (assembler.Mode == MyAssemblerMode.Assembly)
+                            {
                                 find.Amounts.Assembling += amount;
+                            }
                             else if (assembler.Mode == MyAssemblerMode.Disassembly)
+                            {
                                 find.Amounts.Disassembling += amount;
+                            }
                         }
                     }
 
@@ -369,12 +394,18 @@ namespace IngameScript
                         {
                             var config = ConfigObject.Parse(ConfigsSections.ItemsAssembling, assembler.CustomData);
                             if (config == null)
+                            {
                                 continue;
+                            }
 
                             foreach (var entry in config.Data)
                             {
                                 var find = _items.GetItem(entry.Key);
-                                if (find == null) continue;
+                                if (find == null)
+                                {
+                                    continue;
+                                }
+
                                 if (find.Amounts.AssemblingQuota < 0)
                                 {
                                     find.Amounts.AssemblingQuota = 0;
@@ -389,16 +420,22 @@ namespace IngameScript
                             var config = ConfigObject.Parse(ConfigsSections.ItemsDisassembling,
                                 assembler.CustomData);
                             if (config == null)
+                            {
                                 continue;
+                            }
 
                             foreach (var entry in config.Data)
                             {
                                 var find = _items.GetItem(entry.Key);
                                 if (find == null)
+                                {
                                     continue;
+                                }
 
                                 if (find.Amounts.DisassemblingQuota < 0)
+                                {
                                     find.Amounts.DisassemblingQuota = 0;
+                                }
 
                                 find.Amounts.DisassemblingQuota += MyFixedPoint.DeserializeString(entry.Value);
                             }
@@ -445,15 +482,21 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Container))
             {
                 if (!terminalBlock.IsFunctional || !terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
+                {
                     continue;
+                }
 
                 var container = terminalBlock as IMyCargoContainer;
                 if (container == null)
+                {
                     continue;
+                }
 
                 var config = ConfigObject.Parse(ConfigsSections.SpecialContainer, container.CustomData);
                 if (config == null)
+                {
                     continue;
+                }
 
                 var inventory = container.GetInventory(0);
                 _items.TransferFromInventory(inventory);
@@ -462,15 +505,21 @@ namespace IngameScript
                 {
                     var item = _items.GetItem(entry.Key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     var needle = MyFixedPoint.DeserializeString(entry.Value);
                     if (needle == 0)
+                    {
                         continue;
+                    }
 
                     var current = inventory.GetItemAmount(item.Type);
                     if (current >= needle)
+                    {
                         continue;
+                    }
 
                     var quantity = needle - current;
                     InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(), inventory, quantity);
@@ -487,11 +536,15 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks())
             {
                 if (!terminalBlock.IsFunctional || terminalBlock.CustomData.Contains(ConfigsSections.SpecialContainer))
+                {
                     continue;
+                }
 
                 var blockType = BlocksManager.GetBlockTypes(terminalBlock);
                 if (blockType.Intersect(ignoreBlockTypes).Any())
+                {
                     continue;
+                }
 
                 if (blockType.Contains(BlocksManager.BlockType.GasGenerator))
                 {
@@ -532,13 +585,18 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Assembler))
             {
                 if (!terminalBlock.IsWorking)
+                {
                     continue;
+                }
 
                 var assembler = (IMyAssembler)terminalBlock;
 
                 // Add items to quota
                 if (!assembler.IsWorking)
+                {
                     continue;
+                }
+
                 if (!assembler.CooperativeMode)
                 {
                     if (assembler.Mode == MyAssemblerMode.Assembly)
@@ -551,12 +609,16 @@ namespace IngameScript
                             {
                                 var item = _items.GetItem(entry.Key);
                                 if (item == null || item.Blueprints.Count <= 0)
+                                {
                                     continue;
+                                }
 
                                 foreach (var blueprint in item.Blueprints)
                                 {
                                     if (!assembler.CanUseBlueprint(blueprint.Key))
+                                    {
                                         continue;
+                                    }
 
                                     var need = MyFixedPoint.DeserializeString(entry.Value);
                                     var total = item.Amounts.Exist + item.Amounts.Assembling;
@@ -588,12 +650,16 @@ namespace IngameScript
                             {
                                 var item = _items.GetItem(entry.Key);
                                 if (item == null || item.Blueprints.Count <= 0)
+                                {
                                     continue;
+                                }
 
                                 foreach (var blueprint in item.Blueprints)
                                 {
                                     if (!assembler.CanUseBlueprint(blueprint.Key))
+                                    {
                                         continue;
+                                    }
 
                                     var value = entry.Value ?? "0";
 
@@ -624,23 +690,28 @@ namespace IngameScript
                 {
                     var queue = new List<MyProductionItem>();
                     assembler.GetQueue(queue);
-                    var max = 5;
+
+                    const int max = 5;
                     var current = 0;
                     foreach (var queueItem in queue)
                     {
                         var item = _items.GetItem(queueItem.BlueprintId.ToString());
                         if (item == null || item.Blueprints.Count <= 0)
+                        {
                             continue;
+                        }
 
                         foreach (var blueprint in item.Blueprints)
                         {
                             if (!assembler.CanUseBlueprint(blueprint.Key))
+                            {
                                 continue;
+                            }
 
                             MyFixedPoint quantity = queueItem.Amount * blueprint.Value;
                             var transfer = InventoryHelper.TransferFromBlocks(item.Type, _blocks.GetBlocks(),
                                 assembler.GetInventory(1), quantity);
-                            if (transfer != null && transfer > 0)
+                            if (transfer > 0)
                             {
                                 current++;
                             }
@@ -649,7 +720,9 @@ namespace IngameScript
                         }
 
                         if (current >= max)
+                        {
                             break;
+                        }
                     }
                 }
             }
@@ -675,10 +748,15 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Refinery))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
+                {
                     continue;
+                }
+
                 var refinery = terminalBlock as IMyRefinery;
                 if (refinery == null)
+                {
                     continue;
+                }
 
                 destinations.Add(refinery);
             }
@@ -693,14 +771,18 @@ namespace IngameScript
             {
                 if (terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
                     continue;
-                sources.Add(terminalBlock);
+                {
+                    sources.Add(terminalBlock);
+                }
             }
 
             foreach (var refinery in destinations)
             {
                 var config = ConfigObject.Parse(ConfigsSections.RefineryManager, refinery.CustomData);
                 if (config == null || config.Data.Keys.Count == 0)
+                {
                     continue;
+                }
 
                 var destinationInventory = refinery.GetInventory(0);
                 _items.TransferFromInventory(destinationInventory);
@@ -708,11 +790,15 @@ namespace IngameScript
                 {
                     var item = _items.GetItem(key);
                     if (item == null)
+                    {
                         continue;
+                    }
 
                     InventoryHelper.TransferFromBlocks(item.Type, sources, destinationInventory);
                     if (destinationInventory.IsFull)
+                    {
                         break;
+                    }
                 }
             }
         }
@@ -752,14 +838,20 @@ namespace IngameScript
 
                 string error = null;
                 if (string.IsNullOrEmpty(droneBlocksName))
+                {
                     error = "Empty DroneBlocksName";
+                }
+
                 if (string.IsNullOrEmpty(baseContainersName))
+                {
                     error = "Empty BaseContainersName";
+                }
 
                 if (!string.IsNullOrEmpty(error))
                 {
                     _messages["Stop Drones"].Add(connector.CustomName + ":");
-                    _messages["Stop Drones"].Add(error);
+                    _messages["Stop Drones"].Add("ERROR - " + error);
+
                     continue;
                 }
 
@@ -770,7 +862,8 @@ namespace IngameScript
                 if (connectedBlocks.Count == 0)
                 {
                     _messages["Stop Drones"].Add(connector.CustomName + ":");
-                    _messages["Stop Drones"].Add("Can't find drones blocks `" + droneBlocksName + "`");
+                    _messages["Stop Drones"].Add("INFO - Can't find drones blocks `" + droneBlocksName + "`");
+
                     continue;
                 }
 
@@ -817,11 +910,15 @@ namespace IngameScript
             foreach (var terminalBlock in _blocks.GetBlocks(BlocksManager.BlockType.Connector))
             {
                 if (!terminalBlock.IsWorking || !terminalBlock.CustomData.Contains(ConfigsSections.ItemsCollecting))
+                {
                     continue;
+                }
 
                 var connector = (IMyShipConnector)terminalBlock;
                 if (connector.Status != MyShipConnectorStatus.Connected)
+                {
                     continue;
+                }
 
                 var connectedConnector = connector.OtherConnector;
                 var connectedBlocks = new List<IMyTerminalBlock>();
@@ -842,12 +939,18 @@ namespace IngameScript
                         var itemKey = ignore ? key.TrimStart('!') : key;
                         var item = _items.GetItem(itemKey);
                         if (item == null)
+                        {
                             continue;
+                        }
 
                         if (ignore)
+                        {
                             ignoreTypes.Add(item.Type);
+                        }
                         else
+                        {
                             collectTypes.Add(item.Type);
+                        }
                     }
                 }
 
@@ -856,7 +959,9 @@ namespace IngameScript
                     if (block.CustomName.Contains("!" + ConfigsSections.ItemsCollecting)
                         || block.CustomData.Contains("!" + ConfigsSections.ItemsCollecting)
                         || !BlocksManager.GetBlockTypes(block).Intersect(itemsCollectingBlockTypes).Any())
+                    {
                         continue;
+                    }
 
                     for (var i = 0; i < block.InventoryCount; i++)
                     {
@@ -866,10 +971,14 @@ namespace IngameScript
                         foreach (var item in sourceItems)
                         {
                             if (collectTypes.Count != 0 && !collectTypes.Contains(item.Type))
+                            {
                                 continue;
+                            }
 
                             if (ignoreTypes.Count > 0 && ignoreTypes.Contains(item.Type))
+                            {
                                 continue;
+                            }
 
                             InventoryHelper.TransferItem(item, sourceInventory, destinationInventory);
                             _items.TransferFromInventory(destinationInventory);
@@ -888,7 +997,9 @@ namespace IngameScript
 
                 if (terminalBlock == null || !terminalBlock.IsWorking ||
                     !ConfigsSections.Displays.Any(key => terminalBlock.CustomData.Contains(key)))
+                {
                     continue;
+                }
 
                 var config = GetDisplayConfig(terminalBlock, displayObject.SurfaceIndex);
                 var language = config.Get("language");
@@ -923,7 +1034,9 @@ namespace IngameScript
                         foreach (var messageSection in _messages)
                         {
                             if (messageSection.Value.Count == 0)
+                            {
                                 continue;
+                            }
 
                             displayObject.AddBlankLine();
                             displayObject.AddTextLine(messageSection.Key + ":");
@@ -940,9 +1053,8 @@ namespace IngameScript
                         foreach (var configSection in configs)
                         {
                             var configKey = ConfigsHelper.RemoveSectionIndex(configSection.Key);
-                            if (!ConfigsSections.Displays.Any(key =>
-                                    key != ConfigsSections.DisplayConfig && configKey.Contains(key))
-                                || configSection.Value.Count == 0)
+                            if (configSection.Value.Count == 0 || !ConfigsSections.Displays.Any(key =>
+                                    key != ConfigsSections.DisplayConfig && configKey.Contains(key)))
                             {
                                 continue;
                             }
@@ -956,7 +1068,9 @@ namespace IngameScript
                                     configIndexString = "0";
                                 }
                                 else
+                                {
                                     continue;
+                                }
                             }
                             else
                             {
@@ -975,6 +1089,7 @@ namespace IngameScript
                                 if (string.IsNullOrEmpty(clear))
                                 {
                                     displayObject.AddBlankLine();
+
                                     continue;
                                 }
 
@@ -990,6 +1105,7 @@ namespace IngameScript
                                             DisplayObject.TextSprite(label),
                                             DisplayObject.TextSprite(text, TextAlignment.RIGHT)
                                         );
+
                                         continue;
                                     }
                                 }
@@ -1128,7 +1244,9 @@ namespace IngameScript
                 if (border > 0)
                 {
                     foreach (var sprite in DisplayObject.GetSurfaceBorder(display, border, padding))
+                    {
                         frame.Add(sprite);
+                    }
 
                     positionLeft = viewport.X + border + padding * 2;
                     positionRight = viewport.X + viewport.Width - border - padding * 2;
@@ -1162,6 +1280,7 @@ namespace IngameScript
                     if (line.Count == 0)
                     {
                         positionTop += lineHeight;
+
                         continue;
                     }
 
@@ -1203,11 +1322,11 @@ namespace IngameScript
 
         private void TaskDisplayStatus()
         {
-            var displayData = new List<string>()
+            var displayData = new List<string>
             {
                 { "= Crowigor's Base Manager =" },
+                "Runtime: " + SecondsToString(_time)
             };
-            displayData.Add("Runtime: " + SecondsToString(_time));
             displayData.AddRange(_tasks.GetStatusText());
 
             if (_messages.Count > 0)
@@ -1241,8 +1360,10 @@ namespace IngameScript
                 if (!string.IsNullOrEmpty(argument))
                 {
                     var customName = terminalBlock.CustomName.ToLower();
-                    if (!customName.Contains(blockName))
+                    if (!customName.ToLower().Contains(blockName))
+                    {
                         continue;
+                    }
                 }
 
                 var assembler = terminalBlock as IMyAssembler;
@@ -1259,7 +1380,9 @@ namespace IngameScript
                 {
                     var customName = terminalBlock.CustomName.ToLower();
                     if (!customName.Contains(blockName))
+                    {
                         continue;
+                    }
                 }
 
                 for (var i = 0; i < terminalBlock.InventoryCount; i++)

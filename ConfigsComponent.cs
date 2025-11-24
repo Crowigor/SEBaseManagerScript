@@ -70,9 +70,11 @@ namespace IngameScript
                 var result = new ConfigObject(section);
                 foreach (var line in lines)
                 {
-                    KeyValuePair<string, string> content = ConfigsHelper.ParseLine(line);
+                    var content = ConfigsHelper.ParseLine(line);
                     if (!string.IsNullOrEmpty(content.Key))
+                    {
                         result.Set(content.Key, content.Value);
+                    }
                 }
 
                 return result;
@@ -112,7 +114,10 @@ namespace IngameScript
                         }
 
                         if (!result.ContainsKey(section))
+                        {
                             result[section] = new List<string>();
+                        }
+
                         continue;
                     }
 
@@ -127,7 +132,9 @@ namespace IngameScript
                     var list = result[key];
 
                     if (list.Count == 0 || !string.IsNullOrWhiteSpace(list[list.Count - 1].Trim()))
+                    {
                         continue;
+                    }
 
                     list.RemoveAt(list.Count - 1);
                     result[key] = list;
@@ -162,7 +169,9 @@ namespace IngameScript
                 var result = new KeyValuePair<string, string>(null, null);
                 var content = line.Trim();
                 if (string.IsNullOrEmpty(content))
+                {
                     return result;
+                }
 
                 var lineParts = content.Split(new[] { '=' }, 2);
                 var key = lineParts[0].Trim();
@@ -181,10 +190,14 @@ namespace IngameScript
                 foreach (var config in configs)
                 {
                     if (config == null || config.Data.Count == 0)
+                    {
                         continue;
+                    }
 
                     foreach (var entry in config.Data)
+                    {
                         result.Set(entry.Key, entry.Value);
+                    }
                 }
 
                 return result;
@@ -196,7 +209,9 @@ namespace IngameScript
                 var sections = GetSections(customData);
 
                 if (config != null && !string.IsNullOrEmpty(config.Section))
+                {
                     sections[config.Section] = config.ToStringList();
+                }
 
                 var firstSection = false;
                 foreach (var section in sections)
@@ -204,9 +219,13 @@ namespace IngameScript
                     if (section.Key != RootConfigSectionName)
                     {
                         if (!firstSection)
+                        {
                             firstSection = true;
+                        }
                         else
+                        {
                             result.Add("");
+                        }
 
                         result.Add("[" + section.Key + "]");
                     }

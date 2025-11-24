@@ -21,11 +21,15 @@ namespace IngameScript
                     if (destinationInventory == sourceInventory)
                     {
                         if (amount == zero)
+                        {
                             return zero;
+                        }
 
                         var exist = destinationInventory.GetItemAmount(inventoryItem.Type);
                         if (amount <= exist)
+                        {
                             return zero;
+                        }
 
                         result -= exist;
                         continue;
@@ -33,10 +37,14 @@ namespace IngameScript
 
                     var transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
                     if (transfer == null)
+                    {
                         continue;
+                    }
 
                     if (transfer == zero)
+                    {
                         return zero;
+                    }
 
                     result = (MyFixedPoint)transfer;
                 }
@@ -52,20 +60,28 @@ namespace IngameScript
 
                 if (!sourceInventory.CanTransferItemTo(destinationInventory, item.Type) ||
                     destinationInventory.IsFull)
+                {
                     return null;
+                }
 
                 var transfer = (amount == zero || before <= amount)
                     ? sourceInventory.TransferItemTo(destinationInventory, item)
                     : sourceInventory.TransferItemTo(destinationInventory, item, amount);
                 if (!transfer)
+                {
                     return null;
+                }
 
                 var after = GetItemAmount(item, sourceInventory);
                 if (amount == zero || amount == before)
+                {
                     return after;
+                }
 
                 if (amount > before)
+                {
                     return after + (amount - before);
+                }
 
                 var result = (after > 0) ? before - after : before;
                 return amount - result;
@@ -83,13 +99,17 @@ namespace IngameScript
             {
                 var zero = new MyFixedPoint();
                 if (amount == zero || inventories.Count == 0)
+                {
                     return null;
+                }
 
                 var current = destinationInventory.GetItemAmount(type);
                 amount -= current;
 
                 if (amount <= zero)
+                {
                     return amount;
+                }
 
                 foreach (var sourceInventory in inventories)
                 {
@@ -100,21 +120,27 @@ namespace IngameScript
                     {
                         var transfer = TransferItem(inventoryItem, sourceInventory, destinationInventory, amount);
                         if (transfer != null)
+                        {
                             amount = (MyFixedPoint)transfer;
+                        }
 
                         if (amount <= zero)
+                        {
                             return amount;
+                        }
                     }
                 }
 
                 return amount;
             }
-            
+
             public static MyFixedPoint? TransferFromInventories(MyItemType type, List<IMyInventory> inventories,
                 IMyInventory destinationInventory)
             {
                 if (inventories.Count == 0)
+                {
                     return null;
+                }
 
                 var before = destinationInventory.GetItemAmount(type);
                 foreach (var sourceInventory in inventories)
@@ -124,9 +150,10 @@ namespace IngameScript
 
                     foreach (var inventoryItem in sourceInventoryItems)
                     {
-                       TransferItem(inventoryItem, sourceInventory, destinationInventory);
+                        TransferItem(inventoryItem, sourceInventory, destinationInventory);
                     }
                 }
+
                 var after = destinationInventory.GetItemAmount(type);
 
                 return after - before;
@@ -136,23 +163,32 @@ namespace IngameScript
                 IMyInventory destinationInventory, MyFixedPoint amount)
             {
                 if (blocks.Count == 0)
+                {
                     return null;
+                }
 
                 var inventories = new List<IMyInventory>();
                 foreach (var block in blocks)
                 {
                     if (block == null)
+                    {
                         continue;
+                    }
 
                     var inventoryCounts = block.InventoryCount;
                     if (inventoryCounts <= 0)
+                    {
                         continue;
+                    }
 
                     for (var i = 0; i < inventoryCounts; i++)
                     {
                         var inventory = block.GetInventory(i);
                         if (inventory == null)
+                        {
                             continue;
+                        }
+
                         inventories.Add(inventory);
                     }
                 }
@@ -164,23 +200,32 @@ namespace IngameScript
                 IMyInventory destinationInventory)
             {
                 if (blocks.Count == 0)
+                {
                     return null;
+                }
 
                 var inventories = new List<IMyInventory>();
                 foreach (var block in blocks)
                 {
                     if (block == null)
+                    {
                         continue;
+                    }
 
                     var inventoryCounts = block.InventoryCount;
                     if (inventoryCounts <= 0)
+                    {
                         continue;
+                    }
 
                     for (var i = 0; i < inventoryCounts; i++)
                     {
                         var inventory = block.GetInventory(i);
                         if (inventory == null)
+                        {
                             continue;
+                        }
+
                         inventories.Add(inventory);
                     }
                 }

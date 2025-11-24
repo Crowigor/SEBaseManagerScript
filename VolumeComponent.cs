@@ -29,7 +29,7 @@ namespace IngameScript
             }
 
             public long Selector;
-            public VolumeTypes VolumeType;
+            public readonly VolumeTypes VolumeType;
             public string BlockName;
             public double CurrentVolume;
             public double LastVolume;
@@ -39,7 +39,7 @@ namespace IngameScript
             public double LastTime;
             public double Remained;
             public RemainedVectors RemainedVector;
-            public bool IsValid { get; private set; }
+            public bool IsValid { get; }
 
             public VolumeObject(long selector, VolumeTypes volumeType, string blockName)
             {

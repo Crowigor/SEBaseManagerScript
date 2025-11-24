@@ -16,7 +16,9 @@ namespace IngameScript
                 bool needCalculation = false)
             {
                 if (delay < 1)
+                {
                     delay = 1;
+                }
 
                 var task = new TaskObject(name, method, delay, needInitialization, needCalculation);
                 _storage[task.Name] = task;
@@ -37,6 +39,7 @@ namespace IngameScript
                     task.CurrentTick = task.Delay;
                     UpdateTask(task);
                 }
+
                 Run();
             }
 
@@ -46,7 +49,9 @@ namespace IngameScript
                 {
                     var task = _storage[key];
                     if (task.Status == TaskObject.Statuses.Progress)
+                    {
                         continue;
+                    }
 
                     if (task.Status == TaskObject.Statuses.Success || task.Status == TaskObject.Statuses.Error)
                     {
@@ -58,7 +63,9 @@ namespace IngameScript
                     }
 
                     if (task.Status != TaskObject.Statuses.Wait && task.Status != TaskObject.Statuses.Skip)
+                    {
                         continue;
+                    }
 
                     if (task.CurrentTick < task.Delay)
                     {
@@ -96,14 +103,14 @@ namespace IngameScript
                     try
                     {
                         task.Method();
-                        task.Status = (task.Delay == 1)
-                            ? TaskObject.Statuses.Wait
-                            : TaskObject.Statuses.Success;
+                        task.Status = (task.Delay == 1) ? TaskObject.Statuses.Wait : TaskObject.Statuses.Success;
                         UpdateTask(task);
                         TaskObject value;
 
                         if (task.Name == InitializationTaskName && _storage.TryGetValue(CalculationTaskName, out value))
+                        {
                             value.LastStatus = TaskObject.Statuses.Skip;
+                        }
                     }
                     catch (Exception e)
                     {
@@ -120,17 +127,20 @@ namespace IngameScript
                 foreach (var entry in _storage)
                 {
                     var task = entry.Value;
-
                     var text = task.Name + ": ";
 
                     if (task.Delay > 1)
                     {
                         text += (task.Status == TaskObject.Statuses.Wait) ? task.LastStatus : task.Status;
                         if (task.Status != TaskObject.Statuses.Skip)
+                        {
                             text += " (" + task.CurrentTick + "/" + task.Delay + ")";
+                        }
                     }
                     else
+                    {
                         text += (task.Status != TaskObject.Statuses.Error) ? TaskObject.Statuses.Success : task.Status;
+                    }
 
                     result.Add(text);
                     if (task.Error != null)
@@ -146,15 +156,23 @@ namespace IngameScript
             {
                 TaskObject task;
                 if (!_storage.TryGetValue(InitializationTaskName, out task))
+                {
                     return false;
+                }
 
                 bool result;
                 if (task.Status == TaskObject.Statuses.Success)
+                {
                     result = true;
+                }
                 else if (task.Status == TaskObject.Statuses.Wait)
+                {
                     result = (task.LastStatus == TaskObject.Statuses.Success);
+                }
                 else
+                {
                     result = false;
+                }
 
                 return result;
             }
@@ -163,15 +181,23 @@ namespace IngameScript
             {
                 TaskObject task;
                 if (!_storage.TryGetValue(CalculationTaskName, out task))
+                {
                     return false;
+                }
 
                 bool result;
                 if (task.Status == TaskObject.Statuses.Success)
+                {
                     result = true;
+                }
                 else if (task.Status == TaskObject.Statuses.Wait)
+                {
                     result = (task.LastStatus == TaskObject.Statuses.Success);
+                }
                 else
+                {
                     result = false;
+                }
 
                 return result;
             }
