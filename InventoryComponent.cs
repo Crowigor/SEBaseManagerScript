@@ -167,31 +167,7 @@ namespace IngameScript
                     return null;
                 }
 
-                var inventories = new List<IMyInventory>();
-                foreach (var block in blocks)
-                {
-                    if (block == null)
-                    {
-                        continue;
-                    }
-
-                    var inventoryCounts = block.InventoryCount;
-                    if (inventoryCounts <= 0)
-                    {
-                        continue;
-                    }
-
-                    for (var i = 0; i < inventoryCounts; i++)
-                    {
-                        var inventory = block.GetInventory(i);
-                        if (inventory == null)
-                        {
-                            continue;
-                        }
-
-                        inventories.Add(inventory);
-                    }
-                }
+                var inventories = GetBlocksInventories(blocks);
 
                 return TransferFromInventories(type, inventories, destinationInventory, amount);
             }
@@ -204,6 +180,13 @@ namespace IngameScript
                     return null;
                 }
 
+                var inventories = GetBlocksInventories(blocks);
+
+                return TransferFromInventories(type, inventories, destinationInventory);
+            }
+
+            public static List<IMyInventory> GetBlocksInventories(List<IMyTerminalBlock> blocks)
+            {
                 var inventories = new List<IMyInventory>();
                 foreach (var block in blocks)
                 {
@@ -230,7 +213,7 @@ namespace IngameScript
                     }
                 }
 
-                return TransferFromInventories(type, inventories, destinationInventory);
+                return inventories;
             }
         }
     }

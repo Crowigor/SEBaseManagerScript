@@ -766,16 +766,7 @@ namespace IngameScript
                 return;
             }
 
-            var sources = new List<IMyTerminalBlock>();
-            foreach (var terminalBlock in _blocks.GetBlocks())
-            {
-                if (terminalBlock.CustomData.Contains(ConfigsSections.RefineryManager))
-                    continue;
-                {
-                    sources.Add(terminalBlock);
-                }
-            }
-
+            var inventories = InventoryHelper.GetBlocksInventories(_blocks.GetBlocks());
             foreach (var refinery in destinations)
             {
                 var config = ConfigObject.Parse(ConfigsSections.RefineryManager, refinery.CustomData);
@@ -794,7 +785,7 @@ namespace IngameScript
                         continue;
                     }
 
-                    InventoryHelper.TransferFromBlocks(item.Type, sources, destinationInventory);
+                    InventoryHelper.TransferFromInventories(item.Type, inventories, destinationInventory);
                     if (destinationInventory.IsFull)
                     {
                         break;
